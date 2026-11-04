@@ -206,9 +206,10 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 @keyframes tbtf-puff { to { transform: translate(-12px, -6px) scale(1.9); opacity: 0; } }
 
 .tbtf-answer { min-height: 64px; display: flex; align-items: center; justify-content: center; }
-.tbtf-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.tbtf-slot { width: var(--tbtf-slot-w, 96px); max-width: 100%; height: 56px; border-bottom: 3px solid var(--tbtf-blue); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
-.tbt.tbtf-player .tbtf-slot .tbtf-tile { position: static; animation: none; width: 100%; justify-content: center; padding: 0 8px; min-height: 46px; font-size: 19px; }
+.tbtf-slots { display: flex; flex-wrap: nowrap; justify-content: center; gap: 10px 8px; max-width: 100%; }
+.tbtf-slots.is-wrap { flex-wrap: wrap; }
+.tbtf-slot { flex: 0 0 auto; width: var(--tbtf-slot-w, 96px); max-width: 100%; height: 56px; border-bottom: 3px solid var(--tbtf-blue); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.tbt.tbtf-player .tbtf-slot .tbtf-tile { position: static; animation: none; width: 100%; justify-content: center; padding: 0 var(--tbtf-slot-pad, 6px); min-height: 46px; font-size: var(--tbtf-slot-font, 17px); }
 .tbtf-slots.is-good .tbtf-slot { border-color: var(--tbtf-good); }
 .tbt.tbtf-player .tbtf-slots.is-good .tbtf-tile { color: var(--tbtf-good); background: var(--tbtf-good-soft); border-color: var(--tbtf-good); box-shadow: none; }
 .tbtf-slots.is-bad .tbtf-slot { border-color: var(--tbtf-bad); }
@@ -253,7 +254,7 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 .tbtf-app.is-compact .tbtf-bottom { gap: 10px; }
 .tbtf-app.is-compact .tbtf-slots { gap: 6px 8px; }
 .tbtf-app.is-compact .tbtf-slot { height: 50px; }
-.tbt.tbtf-player .tbtf-app.is-compact .tbtf-slot .tbtf-tile { min-height: 42px; font-size: 18px; }
+.tbt.tbtf-player .tbtf-app.is-compact .tbtf-slot .tbtf-tile { min-height: 42px; }
 .tbtf-app.is-compact .tbtf-answer { min-height: 50px; }
 .tbt .tbtf-app.is-compact .tbtf-cue { font-size: 20px !important; padding-top: 8px !important; }
 .tbtf-app.is-compact .tbtf-field { margin-block: 4px; }
