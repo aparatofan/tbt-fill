@@ -404,18 +404,19 @@
 
 		/* All slots share one width, so the width gives nothing away: enough
 		   for the widest word of the round (distractors included) as it shows
-		   in a slot. The row should fit on one line: when it would not, the
-		   slots narrow to share the line and the slot text shrinks to match.
-		   Only if that text would drop below SLOT_FONT_MIN do they wrap. */
+		   in a slot. The slots are a one-row grid that cannot wrap: when the
+		   row is tight the slots share the line and the slot text shrinks to
+		   match, down to SLOT_FONT_MIN. */
 		var SLOT_FONT = 17;
-		var SLOT_FONT_MIN = 13;
+		var SLOT_FONT_MIN = 11;
 		var SLOT_GAP = 8;
+		var SLOT_GAP_TIGHT = 4;
 		var SLOT_MIN_W = 64;
 		function sizeSlots() {
 			var box = el.slots;
-			box.classList.remove( 'is-wrap' );
 			box.style.removeProperty( '--tbtf-slot-font' );
 			box.style.removeProperty( '--tbtf-slot-pad' );
+			box.style.removeProperty( '--tbtf-slot-gap' );
 
 			var probe = document.createElement( 'div' );
 			probe.className = 'tbtf-slot';
@@ -444,19 +445,19 @@
 			if ( want <= share ) {
 				width = Math.min( Math.max( want, SLOT_MIN_W ), share );
 			} else {
-				// Narrow padding, then the font size the widest word needs.
-				var textRoom = share - 8 - frame - 4;
+				// Tight row: smaller gaps and padding, then the font size the
+				// widest word needs.
+				share = Math.floor( ( line - SLOT_GAP_TIGHT * ( n - 1 ) ) / n );
+				box.style.setProperty( '--tbtf-slot-gap', SLOT_GAP_TIGHT + 'px' );
+				var textRoom = share - 4 - frame - 2;
 				var textNow = maxText - 12; // scrollWidth includes 6px padding a side
 				var font = Math.floor( SLOT_FONT * textRoom / Math.max( 1, textNow ) );
-				if ( font >= SLOT_FONT_MIN ) {
-					width = share;
-					box.style.setProperty( '--tbtf-slot-font', Math.min( SLOT_FONT, font ) + 'px' );
-					box.style.setProperty( '--tbtf-slot-pad', '4px' );
-				} else {
-					box.classList.add( 'is-wrap' );
-				}
+				width = Math.max( 1, share );
+				box.style.setProperty( '--tbtf-slot-font', Math.max( SLOT_FONT_MIN, Math.min( SLOT_FONT, font ) ) + 'px' );
+				box.style.setProperty( '--tbtf-slot-pad', '2px' );
 			}
 			box.style.setProperty( '--tbtf-slot-w', width + 'px' );
+			box.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, ' + width + 'px))';
 		}
 
 		/* Random spots with ≥ 12px between tiles and ≥ 6px from the edges
@@ -540,7 +541,7 @@
 			el.slots.innerHTML = '';
 			cur.slots.forEach( function ( id, k ) {
 				var s = document.createElement( 'div' );
-				s.className = 'tbtf-slot';
+				s.className = id === null ? 'tbtf-slot' : 'tbtf-slot is-filled';
 				if ( id !== null ) {
 					var chip = document.createElement( 'button' );
 					chip.type = 'button';
