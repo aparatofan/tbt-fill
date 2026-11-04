@@ -306,6 +306,7 @@ class TBTF_Player {
 				<div class="tbtf-actions">
 					<button type="button" class="tbtf-primary" data-role="start"><?php esc_html_e( 'Start', 'tbt-fill' ); ?></button>
 					<p class="tbtf-best" data-role="best" hidden></p>
+					<p class="tbtf-version">v<?php echo esc_html( TBTF_VERSION ); ?></p>
 				</div>
 			</section>
 
