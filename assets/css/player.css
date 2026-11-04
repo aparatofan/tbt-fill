@@ -1,0 +1,253 @@
+/* TBT Fill — student game. Requires tbt-tokens.css.
+ *
+ * Ported from docs/fill-prototype.html, which is the reference for layout,
+ * timing and animation. Layout: one-screen phone game. Slim top bar, open
+ * tile field in the middle, timer + answer slots + Polish cue anchored in
+ * the thumb zone.
+ *
+ * The start and end screens sit in the page like any TBT tool. While a round
+ * is running the app becomes a fixed full-viewport layer (100dvh, safe
+ * areas honoured) above the theme's header, so nothing scrolls and the
+ * Polish cue never hides under Safari's toolbar or the home bar.
+ *
+ * Every class carries the tbtf- prefix. Text elements are pinned with
+ * !important where Divi styles bare p / h2 / ul, as in the other TBT tools.
+ */
+
+.tbtf-player {
+  --tbtf-bg: #F4F7FC;
+  --tbtf-surface: var(--tbt-surface);
+  --tbtf-ink: var(--tbt-ink);
+  --tbtf-muted: var(--tbt-ink-soft);
+  --tbtf-line: #C8D5EA;
+  --tbtf-blue: var(--tbt-blue);
+  --tbtf-blue-soft: var(--tbt-blue-wash);
+  --tbtf-on-blue: #FFFFFF;
+  --tbtf-sage: #6B9E78;
+  --tbtf-sage-ink: #3E6D4B;
+  --tbtf-sage-soft: #E3EFE6;
+  --tbtf-good: var(--tbtf-sage-ink);
+  --tbtf-good-soft: var(--tbtf-sage-soft);
+  --tbtf-bad: #C23A2B;
+  --tbtf-bad-soft: #FBE3DE;
+  --tbtf-hero-ink: #0E1B33;
+  --tbtf-shade: rgba(8, 30, 70, .12);
+  --tbtf-font: var(--tbt-body);
+  --tbtf-display: var(--tbt-display);
+}
+@media (prefers-color-scheme: dark) {
+  .tbtf-player {
+    --tbtf-bg: #0B1322;
+    --tbtf-surface: #142139;
+    --tbtf-ink: #E8EEF8;
+    --tbtf-muted: #94A3BD;
+    --tbtf-line: #2A3B5A;
+    --tbtf-blue: #5C9BFF;
+    --tbtf-blue-soft: #1A2D4F;
+    --tbtf-on-blue: #06132A;
+    --tbtf-sage: #7FB38C;
+    --tbtf-sage-ink: #93CBA0;
+    --tbtf-sage-soft: #1C3325;
+    --tbtf-bad: #F07A68;
+    --tbtf-bad-soft: #3E1F1C;
+    --tbtf-shade: rgba(0, 0, 0, .35);
+  }
+  .tbtf-app, .tbtf-card { color-scheme: dark; }
+}
+
+/* The pinned rules below outrank the tokens file's zero-specificity
+   [hidden] guard; tripling the attribute out-ranks them. */
+.tbt [hidden][hidden][hidden] { display: none !important; }
+
+.tbt.tbtf-player { padding: var(--tbt-s4) 0; -webkit-tap-highlight-color: transparent; }
+.tbt.tbtf-player p, .tbt.tbtf-player h2, .tbt.tbtf-player ul, .tbt.tbtf-player li { margin: 0 !important; padding: 0 !important; }
+.tbt.tbtf-player button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; margin: 0; text-transform: none; letter-spacing: normal; line-height: normal; }
+.tbt.tbtf-player button:focus-visible { outline: 3px solid var(--tbtf-blue); outline-offset: 2px; }
+
+.tbtf-preview-banner {
+  max-width: 520px; margin: 0 auto var(--tbt-s3); background-color: #FFF6E0; border-left: 4px solid #B07605; color: #6B4700;
+  border-radius: 0 var(--tbt-r-md) var(--tbt-r-md) 0; padding: var(--tbt-s3) var(--tbt-s4); font-size: 15px;
+}
+.tbtf-preview-banner a { font-weight: 600; margin-left: var(--tbt-s2); }
+
+/* ---------- App shell ---------- */
+.tbtf-app, .tbtf-card {
+  max-width: 520px; margin: 0 auto; background: var(--tbtf-bg); color: var(--tbtf-ink);
+  font-family: var(--tbtf-font); border-radius: var(--tbt-r-xl); user-select: none; -webkit-user-select: none;
+}
+.tbtf-card { padding: var(--tbt-s6) var(--tbt-s5); display: flex; flex-direction: column; gap: var(--tbt-s3); align-items: flex-start; }
+.tbtf-card .tbtf-primary { margin-top: var(--tbt-s3); }
+
+.tbtf-screen {
+  display: flex; flex-direction: column; min-height: min(640px, 88vh);
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 18px max(16px, env(safe-area-inset-left, 0px));
+}
+
+/* Playing: a fixed layer over the whole viewport, page scroll locked. */
+html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-behavior: none; }
+.tbtf-app.is-playing {
+  position: fixed; inset: 0; z-index: 999999; max-width: none; border-radius: 0; margin: 0;
+  height: 100vh; height: 100dvh; overflow: hidden; touch-action: manipulation;
+}
+.tbtf-app.is-playing .tbtf-field { min-height: 0; }
+.tbtf-app.is-playing .tbtf-screen--game {
+  height: 100%; min-height: 0; max-width: 520px; margin: 0 auto;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+
+/* ---------- Start + end screens ---------- */
+.tbtf-intro { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.tbt .tbtf-eyebrow {
+  font-family: var(--tbtf-display) !important; font-size: 12px !important; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--tbtf-sage-ink) !important; font-weight: 700; line-height: 1.4 !important;
+}
+.tbt .tbtf-title {
+  font-family: var(--tbtf-display) !important; font-size: 30px !important; line-height: 1.15 !important; font-weight: 700;
+  color: var(--tbtf-ink) !important; margin: 6px 0 10px !important; text-wrap: balance;
+}
+.tbt .tbtf-lead { font-size: 16px !important; line-height: 1.55 !important; color: var(--tbtf-muted) !important; max-width: 34ch; }
+.tbtf-parade { position: relative; height: 60px; width: 240px; max-width: 100%; margin-top: 22px; }
+.tbtf-settings { display: flex; flex-direction: column; gap: 16px; }
+.tbt .tbtf-setting-label { font-size: 13px !important; color: var(--tbtf-muted) !important; margin-bottom: 6px !important; font-weight: 500; }
+.tbtf-seg { display: flex; background: var(--tbtf-blue-soft); border-radius: 12px; padding: 4px; gap: 4px; }
+.tbt.tbtf-player .tbtf-seg button { flex: 1; min-height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500; color: var(--tbtf-muted); }
+.tbt.tbtf-player .tbtf-seg button[aria-pressed="true"] { background: var(--tbtf-surface); color: var(--tbtf-blue); box-shadow: 0 1px 3px var(--tbtf-shade); }
+.tbt.tbtf-player .tbtf-primary {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 56px; border-radius: 16px;
+  background: var(--tbtf-blue); color: var(--tbtf-on-blue); font-size: 18px; font-weight: 600; text-decoration: none;
+}
+.tbt.tbtf-player .tbtf-secondary {
+  width: 100%; min-height: 50px; border-radius: 16px; border: 1.5px solid var(--tbtf-line); font-size: 16px; font-weight: 500; color: var(--tbtf-ink);
+}
+.tbtf-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+.tbt .tbtf-best { font-size: 14px !important; color: var(--tbtf-muted) !important; text-align: center; font-weight: 500; }
+.tbtf-screen--end .tbtf-best { text-align: left; margin-top: 6px !important; }
+.tbtf-best.is-new { color: var(--tbtf-good) !important; font-weight: 600; }
+
+/* ---------- Top bar ---------- */
+.tbtf-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.tbt.tbtf-player .tbtf-iconbtn { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--tbtf-muted); border: 1.5px solid var(--tbtf-line); }
+.tbtf-iconbtn svg { width: 18px; height: 18px; fill: currentColor; }
+.tbt .tbtf-progress { font-size: 14px !important; color: var(--tbtf-muted) !important; font-variant-numeric: tabular-nums; font-weight: 500; }
+.tbtf-score { position: relative; text-align: right; }
+.tbtf-score small { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tbtf-muted); }
+.tbtf-score b { font-family: var(--tbtf-display); font-size: 22px; font-weight: 700; color: var(--tbtf-blue); font-variant-numeric: tabular-nums; }
+.tbtf-gain { position: absolute; right: 0; top: 100%; font-weight: 700; font-size: 16px; pointer-events: none; animation: tbtf-rise 1s ease-out forwards; }
+.tbtf-gain.is-plus { color: var(--tbtf-good); }
+.tbtf-gain.is-minus { color: var(--tbtf-bad); }
+@keyframes tbtf-rise { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-26px); } }
+
+/* ---------- Field ---------- */
+.tbtf-field { flex: 1; position: relative; min-height: 180px; margin-block: 8px; }
+.tbt.tbtf-player .tbtf-tile {
+  position: absolute; min-height: 50px; padding: 0 20px; display: flex; align-items: center; border-radius: 14px;
+  background: var(--tbtf-surface); border: 1.5px solid var(--tbtf-line); box-shadow: 0 3px 0 var(--tbtf-line);
+  color: var(--tbtf-blue); font-size: 21px; font-weight: 500; white-space: nowrap; line-height: 1.2;
+  animation: tbtf-pop .25s ease-out both; touch-action: manipulation;
+}
+.tbt.tbtf-player .tbtf-tile:active { transform: translateY(3px); box-shadow: 0 0 0 var(--tbtf-line); }
+.tbt.tbtf-player .tbtf-tile.is-used { visibility: hidden; }
+@keyframes tbtf-pop { from { transform: scale(.85); } to { transform: scale(1); } }
+
+/* ---------- Bottom: timer, slots, cue ---------- */
+.tbtf-bottom { display: flex; flex-direction: column; gap: 16px; }
+.tbtf-timer { display: flex; align-items: center; gap: 8px; }
+.tbtf-chase { position: relative; flex: 1; height: 60px; overflow: hidden; }
+.tbtf-ground { position: absolute; left: 0; right: 0; bottom: 8px; height: 2px; border-radius: 1px; background: var(--tbtf-line); }
+.tbtf-gap { position: absolute; bottom: 7px; height: 4px; border-radius: 2px; background: var(--tbtf-blue); transition: background .2s; }
+.tbtf-gap.is-low { background: var(--tbtf-bad); }
+.tbtf-gap.is-gone { opacity: 0; }
+.tbtf-secs { width: 26px; text-align: right; font-size: 14px; font-weight: 600; color: var(--tbtf-muted); font-variant-numeric: tabular-nums; }
+
+/* Chase: the sage hero runs right, three TBT-coloured monsters gain on him;
+   the gap between them is the time left. */
+.tbtf-critter { position: absolute; bottom: 9px; left: 0; width: 30px; height: 30px; }
+.tbtf-critter svg { width: 100%; height: 100%; display: block; overflow: visible; transform-origin: 50% 100%; }
+.tbtf-critter svg * { transform-box: fill-box; transform-origin: center; }
+.tbtf-chaser { width: 42px; height: 42px; }
+.tbtf-chaser.tbtf-c2 { width: 38px; height: 38px; }
+.tbtf-chaser.tbtf-c3 { width: 36px; height: 36px; }
+.tbtf-chaser svg { animation: tbtf-stomp .26s ease-in-out infinite alternate; }
+.tbtf-chaser.tbtf-c2 svg { animation-delay: .09s; }
+.tbtf-chaser.tbtf-c3 svg { animation-delay: .17s; }
+.tbtf-chaser .tbtf-jaw { animation: tbtf-chomp .26s ease-in-out infinite alternate; }
+.tbtf-chaser.is-lunge { transition: left .3s ease-out; }
+.tbtf-chaser.is-stunned svg { animation: tbtf-dizzy .3s ease-in-out infinite alternate; }
+.tbtf-chaser.is-stunned .tbtf-jaw { animation: none; }
+@keyframes tbtf-stomp { from { transform: translateY(0) scale(1, 1); } to { transform: translateY(-5px) scale(1.05, .92); } }
+@keyframes tbtf-chomp { from { transform: scaleY(.55); } to { transform: scaleY(1); } }
+@keyframes tbtf-dizzy { from { transform: rotate(-16deg) translateY(1px); } to { transform: rotate(16deg) translateY(-1px); } }
+.tbtf-hero svg { animation: tbtf-run .18s ease-in-out infinite alternate; }
+.tbtf-hero .tbtf-leg { animation: tbtf-legs .18s linear infinite alternate; }
+.tbtf-hero .tbtf-leg.tbtf-leg-b { animation-direction: alternate-reverse; }
+.tbtf-hero .tbtf-sweat { opacity: 0; transition: opacity .2s; }
+.tbtf-hero.is-nervous svg, .tbtf-hero.is-nervous .tbtf-leg { animation-duration: .11s; }
+.tbtf-hero.is-nervous .tbtf-sweat { opacity: 1; }
+.tbtf-hero.is-escape svg { animation: tbtf-escape .7s ease-in forwards; }
+.tbtf-hero.is-gulp svg { animation: tbtf-gulp .4s ease-in forwards; }
+@keyframes tbtf-run { from { transform: translateY(0) rotate(4deg); } to { transform: translateY(-4px) rotate(9deg); } }
+@keyframes tbtf-legs { from { transform: translateX(-2.5px); } to { transform: translateX(2.5px); } }
+@keyframes tbtf-escape { 0% { transform: translate(0, 0) rotate(8deg); } 20% { transform: translate(4px, -12px) rotate(16deg); } 100% { transform: translate(170px, 0) rotate(10deg); } }
+@keyframes tbtf-gulp { to { transform: scale(0) rotate(120deg); opacity: 0; } }
+.tbtf-puff { position: absolute; bottom: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--tbtf-line); pointer-events: none; animation: tbtf-puff .5s ease-out forwards; }
+@keyframes tbtf-puff { to { transform: translate(-12px, -6px) scale(1.9); opacity: 0; } }
+
+.tbtf-answer { min-height: 64px; display: flex; align-items: center; justify-content: center; }
+.tbtf-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.tbtf-slot { width: var(--tbtf-slot-w, 96px); max-width: 100%; height: 56px; border-bottom: 3px solid var(--tbtf-blue); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+.tbt.tbtf-player .tbtf-slot .tbtf-tile { position: static; animation: none; width: 100%; justify-content: center; padding: 0 8px; min-height: 46px; font-size: 19px; }
+.tbtf-slots.is-good .tbtf-slot { border-color: var(--tbtf-good); }
+.tbt.tbtf-player .tbtf-slots.is-good .tbtf-tile { color: var(--tbtf-good); background: var(--tbtf-good-soft); border-color: var(--tbtf-good); box-shadow: none; }
+.tbtf-slots.is-bad .tbtf-slot { border-color: var(--tbtf-bad); }
+.tbt.tbtf-player .tbtf-slots.is-bad .tbtf-tile { color: var(--tbtf-bad); background: var(--tbtf-bad-soft); border-color: var(--tbtf-bad); box-shadow: none; }
+.tbtf-slots.is-bad { animation: tbtf-shake .4s; }
+@keyframes tbtf-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+.tbtf-reveal { text-align: center; }
+.tbtf-reveal small { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+.tbtf-reveal span { font-family: var(--tbtf-display); font-size: 26px; font-weight: 600; line-height: 1.25; text-wrap: balance; }
+.tbtf-reveal.is-good { color: var(--tbtf-good); }
+.tbtf-reveal.is-bad { color: var(--tbtf-bad); }
+.tbtf-reveal.is-bad span { color: var(--tbtf-ink); }
+.tbt .tbtf-cue {
+  text-align: center; font-family: var(--tbtf-display); font-size: 22px !important; font-weight: 600; line-height: 1.3 !important;
+  color: var(--tbtf-ink) !important; padding-top: 12px !important; border-top: 1px solid var(--tbtf-line); text-wrap: balance;
+}
+
+/* ---------- Pause overlay ---------- */
+.tbtf-overlay {
+  position: fixed; inset: 0; z-index: 1000000; display: grid; place-items: center;
+  background: var(--tbtf-bg); background: color-mix(in srgb, var(--tbtf-bg) 92%, transparent);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.tbtf-overlay-box { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.tbt .tbtf-overlay h2 { font-family: var(--tbtf-display) !important; font-size: 24px !important; color: var(--tbtf-ink) !important; margin: 0 0 8px !important; }
+
+/* ---------- End screen ---------- */
+.tbt .tbtf-big { font-family: var(--tbtf-display); font-size: 64px !important; font-weight: 700; color: var(--tbtf-blue) !important; line-height: 1 !important; font-variant-numeric: tabular-nums; margin: 6px 0 10px !important; }
+.tbtf-results { list-style: none !important; display: flex; flex-direction: column; gap: 8px; }
+.tbt.tbtf-player .tbtf-results li {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px !important;
+  background: var(--tbtf-surface); border: 1px solid var(--tbtf-line); border-radius: 12px; font-size: 16px; list-style: none;
+}
+.tbtf-chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.tbtf-chip.is-first { background: var(--tbtf-good-soft); color: var(--tbtf-good); }
+.tbtf-chip.is-retry { background: var(--tbtf-blue-soft); color: var(--tbtf-blue); }
+.tbtf-chip.is-missed { background: var(--tbtf-bad-soft); color: var(--tbtf-bad); }
+
+/* Compact: only when a long phrase does not fit at full size (small
+   phones). Tiles stay at least 48px tall. */
+.tbt.tbtf-player .tbtf-app.is-compact .tbtf-field .tbtf-tile { padding: 0 14px; font-size: 19px; min-height: 48px; }
+.tbtf-app.is-compact .tbtf-bottom { gap: 10px; }
+.tbtf-app.is-compact .tbtf-slots { gap: 6px 8px; }
+.tbtf-app.is-compact .tbtf-slot { height: 50px; }
+.tbt.tbtf-player .tbtf-app.is-compact .tbtf-slot .tbtf-tile { min-height: 42px; font-size: 18px; }
+.tbtf-app.is-compact .tbtf-answer { min-height: 50px; }
+.tbt .tbtf-app.is-compact .tbtf-cue { font-size: 20px !important; padding-top: 8px !important; }
+.tbtf-app.is-compact .tbtf-field { margin-block: 4px; }
+
+/* Reduced motion: creatures stand still and puffs are off; the strip still
+   shrinks, so the timer still reads. */
+@media (prefers-reduced-motion: reduce) {
+  .tbt.tbtf-player .tbtf-tile, .tbtf-slots.is-bad, .tbtf-gain, .tbtf-critter svg, .tbtf-critter svg * { animation: none !important; }
+  .tbtf-puff { display: none; }
+}

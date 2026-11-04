@@ -1,0 +1,490 @@
+<title>TBT Fill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen phone game. Slim top bar, open tile field in the middle, timer + answer slots + Polish cue anchored in the thumb zone. */
+:root{
+  --bg:#F4F7FC; --surface:#FFFFFF; --ink:#0E1B33; --muted:#5B6B87; --line:#C8D5EA;
+  --blue:#0859C6; --blue-soft:#E2ECFA;
+  --sage:#6B9E78; --sage-ink:#3E6D4B; --sage-soft:#E3EFE6;
+  --good:var(--sage-ink); --good-soft:var(--sage-soft); --bad:#C23A2B; --bad-soft:#FBE3DE;
+  --font:"Lexend","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1322; --surface:#142139; --ink:#E8EEF8; --muted:#94A3BD; --line:#2A3B5A;
+  --blue:#5C9BFF; --blue-soft:#1A2D4F; --sage:#7FB38C; --sage-ink:#93CBA0; --sage-soft:#1C3325;
+  --bad:#F07A68; --bad-soft:#3E1F1C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1322; --surface:#142139; --ink:#E8EEF8; --muted:#94A3BD; --line:#2A3B5A;
+  --blue:#5C9BFF; --blue-soft:#1A2D4F; --sage:#7FB38C; --sage-ink:#93CBA0; --sage-soft:#1C3325;
+  --bad:#F07A68; --bad-soft:#3E1F1C; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{height:100%;box-sizing:border-box}
+body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.screen{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 18px}
+
+/* Start + end screens */
+.intro{flex:1;display:flex;flex-direction:column;justify-content:center;gap:28px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sage-ink);font-weight:600}
+.parade{position:relative;height:60px;width:240px;max-width:100%;margin-top:22px}
+.intro h1{font-size:32px;line-height:1.15;margin:6px 0 10px;font-weight:700;text-wrap:balance}
+.intro p{font-size:16px;line-height:1.55;color:var(--muted);margin:0;max-width:34ch}
+.settings{display:flex;flex-direction:column;gap:16px}
+.setting label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500}
+.seg{display:flex;background:var(--blue-soft);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:42px;border-radius:9px;font-size:14px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--blue);box-shadow:0 1px 3px rgba(8,30,70,.12)}
+.primary{width:100%;min-height:56px;border-radius:16px;background:var(--blue);color:#fff;font-size:18px;font-weight:600}
+:root[data-theme="dark"] .primary{color:#06132A}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .primary{color:#06132A}}
+.secondary{width:100%;min-height:50px;border-radius:16px;border:1.5px solid var(--line);font-size:16px;font-weight:500;color:var(--ink)}
+.note{font-size:12px;color:var(--muted);text-align:center;line-height:1.5}
+.actions{display:flex;flex-direction:column;gap:10px}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--muted);border:1.5px solid var(--line)}
+.iconbtn svg{width:18px;height:18px;fill:currentColor}
+.progress{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:500}
+.score{position:relative;text-align:right}
+.score small{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.score b{font-size:22px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums}
+.gain{position:absolute;right:0;top:100%;font-weight:700;font-size:16px;pointer-events:none;animation:rise 1s ease-out forwards}
+.gain.plus{color:var(--good)} .gain.minus{color:var(--bad)}
+@keyframes rise{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-26px)}}
+
+/* Field */
+.field{flex:1;position:relative;min-height:180px;margin-block:8px}
+.tile{position:absolute;min-height:50px;padding:0 20px;display:flex;align-items:center;border-radius:14px;
+  background:var(--surface);border:1.5px solid var(--line);box-shadow:0 3px 0 var(--line);
+  color:var(--blue);font-size:21px;font-weight:500;white-space:nowrap;animation:pop .25s ease-out both}
+.tile:active{transform:translateY(3px);box-shadow:0 0 0 var(--line)}
+.tile.used{visibility:hidden}
+@keyframes pop{from{transform:scale(.85)}to{transform:scale(1)}}
+
+/* Bottom: timer, slots, cue */
+.bottom{display:flex;flex-direction:column;gap:16px}
+.timer{display:flex;align-items:center;gap:8px}
+.chase{position:relative;flex:1;height:60px;overflow:hidden}
+.ground{position:absolute;left:0;right:0;bottom:8px;height:2px;border-radius:1px;background:var(--line)}
+.gap{position:absolute;bottom:7px;height:4px;border-radius:2px;background:var(--blue);transition:background .2s}
+.gap.low{background:var(--bad)}
+.gap.gone{opacity:0}
+.secs{width:26px;text-align:right;font-size:14px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Chase: the sage hero runs right, three TBT-coloured monsters gain on him; the gap between them is the time left */
+.critter{position:absolute;bottom:9px;left:0;width:30px;height:30px}
+.critter svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 100%}
+.critter svg *{transform-box:fill-box;transform-origin:center}
+.chaser{width:42px;height:42px}
+.chaser.c2{width:38px;height:38px}
+.chaser.c3{width:36px;height:36px}
+.chaser svg{animation:stomp .26s ease-in-out infinite alternate}
+.chaser.c2 svg{animation-delay:.09s} .chaser.c3 svg{animation-delay:.17s}
+.chaser .jaw{animation:chomp .26s ease-in-out infinite alternate}
+.chaser.lunge{transition:left .3s ease-out}
+.chaser.stunned svg{animation:dizzy .3s ease-in-out infinite alternate}
+.chaser.stunned .jaw{animation:none}
+@keyframes stomp{from{transform:translateY(0) scale(1,1)}to{transform:translateY(-5px) scale(1.05,.92)}}
+@keyframes chomp{from{transform:scaleY(.55)}to{transform:scaleY(1)}}
+@keyframes dizzy{from{transform:rotate(-16deg) translateY(1px)}to{transform:rotate(16deg) translateY(-1px)}}
+.hero svg{animation:run .18s ease-in-out infinite alternate}
+.hero .leg{animation:legs .18s linear infinite alternate}
+.hero .leg.b{animation-direction:alternate-reverse}
+.hero .sweat{opacity:0;transition:opacity .2s}
+.hero.nervous svg,.hero.nervous .leg{animation-duration:.11s}
+.hero.nervous .sweat{opacity:1}
+.hero.escape svg{animation:escape .7s ease-in forwards}
+.hero.gulp svg{animation:gulp .4s ease-in forwards}
+@keyframes run{from{transform:translateY(0) rotate(4deg)}to{transform:translateY(-4px) rotate(9deg)}}
+@keyframes legs{from{transform:translateX(-2.5px)}to{transform:translateX(2.5px)}}
+@keyframes escape{0%{transform:translate(0,0) rotate(8deg)}20%{transform:translate(4px,-12px) rotate(16deg)}100%{transform:translate(170px,0) rotate(10deg)}}
+@keyframes gulp{to{transform:scale(0) rotate(120deg);opacity:0}}
+.puff{position:absolute;bottom:9px;width:7px;height:7px;border-radius:50%;background:var(--line);pointer-events:none;animation:puff .5s ease-out forwards}
+@keyframes puff{to{transform:translate(-12px,-6px) scale(1.9);opacity:0}}
+.answer{min-height:64px;display:flex;align-items:center;justify-content:center}
+.slots{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.slot{width:var(--slot-w,96px);max-width:100%;height:56px;border-bottom:3px solid var(--blue);display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+.slot .tile{position:static;animation:none;width:100%;justify-content:center;padding:0 8px;min-height:46px;font-size:19px}
+.slots.good .slot{border-color:var(--good)} .slots.good .tile{color:var(--good);background:var(--good-soft);border-color:var(--good);box-shadow:none}
+.slots.bad .slot{border-color:var(--bad)} .slots.bad .tile{color:var(--bad);background:var(--bad-soft);border-color:var(--bad);box-shadow:none}
+.slots.bad{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.reveal{text-align:center}
+.reveal small{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.reveal span{font-size:26px;font-weight:600;line-height:1.25;text-wrap:balance}
+.reveal.good{color:var(--good)} .reveal.bad{color:var(--bad)} .reveal.bad span{color:var(--ink)}
+.cue{text-align:center;font-size:22px;font-weight:600;line-height:1.3;color:var(--ink);padding-top:12px;border-top:1px solid var(--line);text-wrap:balance}
+
+/* Pause overlay */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 92%,transparent);display:grid;place-items:center;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.overlay .box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.overlay h2{margin:0 0 8px;font-size:24px}
+
+/* End screen */
+.big{font-size:64px;font-weight:700;color:var(--blue);line-height:1;font-variant-numeric:tabular-nums}
+.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.results li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font-size:16px}
+.chip{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.chip.first{background:var(--good-soft);color:var(--good)} .chip.retry{background:var(--blue-soft);color:var(--blue)} .chip.missed{background:var(--bad-soft);color:var(--bad)}
+
+@media (prefers-reduced-motion: reduce){.tile,.slots.bad,.gain,.critter svg{animation:none!important}}
+</style>
+
+<section class="screen" id="start">
+  <div class="intro">
+    <div>
+      <div class="eyebrow">Volume 1 · Chapter 1 · Branch 1</div>
+      <h1>Greeting people you know</h1>
+      <p>Read the Polish, then build the English phrase before the monsters catch up. Tap a word to place it. Tap it again to take it back.</p>
+      <div class="parade" aria-hidden="true">
+        <div class="critter chaser c3" style="left:0" data-art="chaser" data-color="#006600"></div>
+        <div class="critter chaser c2" style="left:32px" data-art="chaser" data-color="#663366"></div>
+        <div class="critter chaser c1" style="left:68px" data-art="chaser" data-color="#660000"></div>
+        <div class="critter hero nervous" style="left:190px" data-art="hero"></div>
+      </div>
+    </div>
+    <div class="settings">
+      <div class="setting"><label id="l-pace">Timer</label>
+        <div class="seg" role="group" aria-labelledby="l-pace" data-key="pace">
+          <button id="pace-relaxed" data-v="relaxed">Relaxed</button><button id="pace-standard" data-v="standard">Standard</button><button id="pace-fast" data-v="fast">Fast</button>
+        </div></div>
+      <div class="setting"><label id="l-dis">Extra words</label>
+        <div class="seg" role="group" aria-labelledby="l-dis" data-key="distractors">
+          <button id="dis-hand" data-v="hand">Hand-picked</button><button id="dis-branch" data-v="branch">From branch</button>
+        </div></div>
+      <div class="setting"><label id="l-audio">Audio after each phrase</label>
+        <div class="seg" role="group" aria-labelledby="l-audio" data-key="audio">
+          <button id="audio-on" data-v="on">On</button><button id="audio-off" data-v="off">Off</button>
+        </div></div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="primary" id="startBtn">Start</button>
+    <div class="note">Prototype with sample data. The browser voice stands in for the ElevenLabs audio.</div>
+  </div>
+</section>
+
+<section class="screen" id="game" hidden>
+  <div class="topbar">
+    <button class="iconbtn" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 18 18"><rect x="3" y="2" width="4" height="14" rx="1"/><rect x="11" y="2" width="4" height="14" rx="1"/></svg></button>
+    <div class="progress" id="progress">1 / 5</div>
+    <div class="score"><small>Score</small><b id="score">0</b></div>
+  </div>
+  <div class="field" id="field"></div>
+  <div class="bottom">
+    <div class="timer">
+      <div class="chase" id="chase" aria-hidden="true">
+        <div class="ground"></div>
+        <div class="gap" id="gap"></div>
+        <div class="critter chaser c3" id="c3" data-art="chaser" data-color="#006600"></div>
+        <div class="critter chaser c2" id="c2" data-art="chaser" data-color="#663366"></div>
+        <div class="critter chaser c1" id="c1" data-art="chaser" data-color="#660000"></div>
+        <div class="critter hero" id="hero" data-art="hero"></div>
+      </div>
+      <div class="secs" id="secs">7</div>
+    </div>
+    <div class="answer">
+      <div class="slots" id="slots"></div>
+      <div class="reveal" id="reveal" hidden><small id="revealLabel"></small><span id="revealText"></span></div>
+    </div>
+    <div class="cue" id="cue">Jak leci?</div>
+  </div>
+</section>
+
+<section class="screen" id="end" hidden>
+  <div class="intro">
+    <div>
+      <div class="eyebrow">Round complete</div>
+      <div class="big" id="finalScore">0</div>
+      <p id="summary" style="margin-top:10px"></p>
+    </div>
+    <ul class="results" id="results"></ul>
+  </div>
+  <div class="actions">
+    <button class="primary" id="againBtn">Play again</button>
+    <button class="secondary" id="settingsBtn">Change settings</button>
+  </div>
+</section>
+
+<div class="overlay" id="pauseOverlay" hidden>
+  <div class="box">
+    <h2>Paused</h2>
+    <button class="primary" id="resumeBtn">Resume</button>
+    <button class="secondary" id="quitBtn">Quit to start</button>
+  </div>
+</div>
+
+<script>
+const BRANCH = {
+  items: [
+    { en: "How's it going?",   pl: "Jak leci? Jak tam?",    d: ["doing", "you"] },
+    { en: "How are things?",   pl: "Jak sprawy?",           d: ["is", "thing"] },
+    { en: "Nice to see you!",  pl: "Miło cię widzieć!",     d: ["meet", "your"] },
+    { en: "Long time no see!", pl: "Kopę lat!",             d: ["seen", "not"] },
+    { en: "How have you been?",pl: "Co u ciebie słychać?",  d: ["are", "being"] }
+  ]
+};
+const PACE = { relaxed: n => 5 + 1.5 * n, standard: n => 4 + n, fast: n => 3 + 0.7 * n };
+
+/* Critter art: horned TBT-coloured monsters look right at the hero; the sage hero runs right, glancing back */
+const ART = {
+  chaser: c => `<svg viewBox="0 0 42 42">
+    <path d="M9 15 L10 3 L17 11 Z M18 9 L21 0 L25 9 Z M27 11 L33 3 L34 15 Z" fill="${c}"/>
+    <circle cx="21" cy="24" r="17" fill="${c}" stroke="var(--surface)" stroke-width="1.5"/>
+    <ellipse cx="22" cy="19" rx="4" ry="3.4" fill="#fff"/><ellipse cx="31" cy="18.5" rx="3.6" ry="3.2" fill="#fff"/>
+    <circle cx="23.6" cy="19.6" r="1.9" fill="#120808"/><circle cx="32.4" cy="19" r="1.7" fill="#120808"/>
+    <path d="M16.5 13.5 L26 17 M27.5 15.8 L35.5 12.5" stroke="#120808" stroke-width="2.2" stroke-linecap="round"/>
+    <g class="jaw"><ellipse cx="26" cy="30.5" rx="9.5" ry="5.2" fill="#1a0707"/>
+    <path d="M17.5 27.5 L19.5 31 L21.5 27 L23.5 31 L25.5 26.8 L27.5 31 L29.5 26.9 L31.5 31 L33.6 27.6 Z" fill="#fff"/>
+    <path d="M19.5 34.2 L21.5 31.5 L23.5 35 L25.5 31.5 L27.5 35.2 L29.5 31.5 L31.5 34.4 Z" fill="#fff"/></g></svg>`,
+  hero: () => `<svg viewBox="0 0 30 30">
+    <ellipse class="leg" cx="11" cy="28" rx="3.4" ry="1.9" fill="var(--sage-ink)"/>
+    <ellipse class="leg b" cx="19" cy="28" rx="3.4" ry="1.9" fill="var(--sage-ink)"/>
+    <circle cx="15" cy="15" r="12" fill="var(--sage)" stroke="var(--surface)" stroke-width="1.5"/>
+    <ellipse cx="11" cy="12" rx="3.1" ry="3.7" fill="#fff"/><ellipse cx="18" cy="12" rx="3.1" ry="3.7" fill="#fff"/>
+    <circle cx="9.8" cy="12.5" r="1.6" fill="#0E1B33"/><circle cx="16.8" cy="12.5" r="1.6" fill="#0E1B33"/>
+    <ellipse cx="14" cy="20" rx="2.2" ry="2" fill="#0E1B33"/>
+    <path class="sweat" d="M26 3 Q28.5 7 26 8.5 Q23.5 7 26 3 Z" fill="var(--blue)"/></svg>`
+};
+document.querySelectorAll("[data-art]").forEach(el => el.innerHTML = ART[el.dataset.art](el.dataset.color));
+
+/* Positions: the lead monster and the hero both move right; the monster is faster and reaches him exactly when time runs out */
+const HERO_W = 30, LEAD_W = 42, PACK_X = 72;
+let lastPuff = 0;
+function chaseGeom(f) {
+  const W = $("chase").clientWidth, end = W - HERO_W - 2, p = 1 - f;
+  const heroStart = PACK_X + LEAD_W + (end - PACK_X - LEAD_W) * 0.5;
+  return { lead: PACK_X + (end - LEAD_W - PACK_X) * p, hero: heroStart + (end - heroStart) * p };
+}
+function placePack(lead) {
+  $("c1").style.left = lead + "px"; $("c2").style.left = (lead - 36) + "px"; $("c3").style.left = (lead - 70) + "px";
+}
+function setChase(f) {
+  const g = chaseGeom(f);
+  placePack(g.lead);
+  $("hero").style.left = g.hero + "px";
+  const gs = g.lead + LEAD_W - 6;
+  $("gap").style.left = gs + "px"; $("gap").style.width = Math.max(0, g.hero + 6 - gs) + "px";
+  $("gap").classList.toggle("low", f < 0.3);
+  $("hero").classList.toggle("nervous", f < 0.3 && f > 0);
+  const now = performance.now();
+  if (f > 0 && now - lastPuff > 160 && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    lastPuff = now;
+    const d = document.createElement("span"); d.className = "puff"; d.style.left = (g.hero + 2) + "px";
+    $("chase").appendChild(d); setTimeout(() => d.remove(), 500);
+  }
+}
+function resetChase() {
+  ["c1", "c2", "c3"].forEach(id => $(id).classList.remove("lunge", "stunned"));
+  $("hero").className = "critter hero";
+  $("gap").className = "gap";
+  setChase(1);
+}
+const settings = { pace: "standard", distractors: "hand", audio: "on" };
+
+const $ = id => document.getElementById(id);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const words = en => en.replace(/[?!.]+$/, "").split(/\s+/).map(w => /^I('|$)/.test(w) ? w : w.toLowerCase());
+
+/* Settings */
+document.querySelectorAll(".seg").forEach(seg => {
+  const key = seg.dataset.key;
+  const sync = () => seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === settings[key]));
+  seg.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; settings[key] = b.dataset.v; sync(); });
+  sync();
+});
+
+/* Game state */
+let G = null, cur = null, raf = 0;
+
+function show(id) { ["start", "game", "end"].forEach(s => $(s).hidden = s !== id); }
+
+function startGame() {
+  G = { queue: shuffle(BRANCH.items.map((_, i) => i)), pos: 0, score: 0, retried: new Set(), result: {} };
+  show("game"); $("score").textContent = 0;
+  nextItem();
+}
+
+function pickDistractors(item, answer) {
+  if (settings.distractors === "hand" && item.d) return item.d.slice(0, 2);
+  const pool = [...new Set(BRANCH.items.filter(x => x !== item).flatMap(x => words(x.en)))].filter(w => !answer.includes(w));
+  return shuffle(pool).slice(0, 2);
+}
+
+function nextItem() {
+  if (G.pos >= G.queue.length) return finish();
+  const idx = G.queue[G.pos];
+  const item = BRANCH.items[idx];
+  const answer = words(item.en);
+  const all = shuffle([...answer, ...pickDistractors(item, answer)]).map((t, i) => ({ id: i, text: t }));
+  cur = { idx, item, answer, tiles: all, slots: answer.map(() => null), locked: false };
+
+  $("progress").textContent = `${G.pos + 1} / ${G.queue.length}`;
+  $("cue").textContent = item.pl;
+  $("reveal").hidden = true; $("slots").hidden = false; $("slots").className = "slots";
+
+  const field = $("field"); field.innerHTML = "";
+  all.forEach(t => {
+    const el = document.createElement("button");
+    el.className = "tile"; el.textContent = t.text; el.id = "tile-" + t.id;
+    el.addEventListener("click", () => place(t.id));
+    field.appendChild(el); t.el = el;
+  });
+  const maxW = Math.max(...all.map(t => t.el.offsetWidth));
+  $("slots").style.setProperty("--slot-w", Math.max(88, maxW + 12) + "px");
+  layoutTiles();
+  renderSlots();
+
+  resetChase();
+  const total = PACE[settings.pace](answer.length);
+  cur.timer = { total, left: total, running: true, last: performance.now() };
+  $("secs").textContent = Math.ceil(total);
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+}
+
+function layoutTiles() {
+  const field = $("field"), W = field.clientWidth, H = field.clientHeight, pad = 6, gap = 12;
+  const tiles = cur.tiles.filter(t => !t.el.classList.contains("used"));
+  const tryRandom = () => {
+    const placed = [];
+    for (const t of tiles) {
+      const w = t.el.offsetWidth, h = t.el.offsetHeight; let spot = null;
+      for (let k = 0; k < 400 && !spot; k++) {
+        const x = pad + Math.random() * Math.max(0, W - w - 2 * pad), y = pad + Math.random() * Math.max(0, H - h - 2 * pad);
+        if (placed.every(p => x + w + gap < p.x || p.x + p.w + gap < x || y + h + gap < p.y || p.y + p.h + gap < y)) spot = { x, y, w, h };
+      }
+      if (!spot) return null;
+      placed.push(spot);
+    }
+    return placed;
+  };
+  let spots = tryRandom();
+  if (!spots) { // fallback: wrapped rows
+    spots = []; let x = pad, y = pad, rowH = 0;
+    for (const t of tiles) { const w = t.el.offsetWidth, h = t.el.offsetHeight;
+      if (x + w > W - pad) { x = pad; y += rowH + 10; rowH = 0; }
+      spots.push({ x, y }); x += w + 10; rowH = Math.max(rowH, h); }
+  }
+  tiles.forEach((t, i) => { t.el.style.left = spots[i].x + "px"; t.el.style.top = spots[i].y + "px"; t.el.style.animationDelay = (i * 40) + "ms"; });
+}
+
+function renderSlots() {
+  const box = $("slots"); box.innerHTML = "";
+  cur.slots.forEach((id, k) => {
+    const s = document.createElement("div"); s.className = "slot";
+    if (id !== null) {
+      const chip = document.createElement("button"); chip.className = "tile";
+      chip.textContent = cur.tiles[id].text; chip.setAttribute("aria-label", `Remove ${cur.tiles[id].text}`);
+      chip.addEventListener("click", () => unplace(k));
+      s.appendChild(chip);
+    }
+    box.appendChild(s);
+  });
+  cur.tiles.forEach(t => t.el.classList.toggle("used", cur.slots.includes(t.id)));
+}
+
+function place(id) {
+  if (!cur || cur.locked || cur.slots.includes(id)) return;
+  const k = cur.slots.indexOf(null); if (k < 0) return;
+  cur.slots[k] = id; renderSlots();
+  if (!cur.slots.includes(null)) check();
+}
+function unplace(k) { if (!cur || cur.locked) return; cur.slots[k] = null; renderSlots(); }
+
+function check() {
+  const built = cur.slots.map(id => cur.tiles[id].text);
+  built.every((w, i) => w === cur.answer[i]) ? success() : fail("wrong");
+}
+
+function tick(now) {
+  const t = cur && cur.timer; if (!t) return;
+  if (t.running) {
+    t.left -= (now - t.last) / 1000; t.last = now;
+    const f = Math.max(0, t.left / t.total);
+    $("secs").textContent = Math.max(0, Math.ceil(t.left));
+    setChase(f);
+    if (t.left <= 0) return fail("time");
+  } else t.last = now;
+  raf = requestAnimationFrame(tick);
+}
+
+function addScore(n) {
+  G.score = Math.max(0, G.score + n); $("score").textContent = G.score;
+  const g = document.createElement("span"); g.className = "gain " + (n >= 0 ? "plus" : "minus"); g.textContent = (n >= 0 ? "+" : "") + n;
+  $("score").parentNode.appendChild(g); setTimeout(() => g.remove(), 1000);
+}
+
+function speak(text) {
+  if (settings.audio !== "on") return;
+  try { const u = new SpeechSynthesisUtterance(text); u.lang = "en-GB"; u.rate = 0.95; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+}
+
+function reveal(label, cls) {
+  $("slots").hidden = true; $("reveal").hidden = false; $("reveal").className = "reveal " + cls;
+  $("revealLabel").textContent = label; $("revealText").textContent = cur.item.en;
+}
+
+function success() {
+  cur.locked = true; cur.timer.running = false; cancelAnimationFrame(raf);
+  addScore(10 + Math.ceil(cur.timer.left) * 2);
+  G.result[cur.idx] = G.retried.has(cur.idx) ? "retry" : "first";
+  $("slots").classList.add("good");
+  ["c1", "c2", "c3"].forEach(id => $(id).classList.add("stunned"));
+  $("gap").classList.add("gone");
+  $("hero").className = "critter hero escape";
+  setTimeout(() => reveal("Correct", "good"), 350);
+  speak(cur.item.en);
+  setTimeout(() => { G.pos++; nextItem(); }, 1700);
+}
+
+function fail(reason) {
+  cur.locked = true; cur.timer.running = false; cancelAnimationFrame(raf);
+  $("secs").textContent = 0; $("gap").classList.add("gone");
+  ["c1", "c2", "c3"].forEach(id => $(id).classList.add("lunge"));
+  placePack(parseFloat($("hero").style.left) - LEAD_W + 10);
+  $("hero").className = "critter hero";
+  setTimeout(() => { $("hero").className = "critter hero gulp"; }, 280);
+  addScore(-5);
+  if (!G.retried.has(cur.idx)) { G.retried.add(cur.idx); G.queue.push(cur.idx); }
+  else G.result[cur.idx] = "missed";
+  if (reason === "wrong") $("slots").classList.add("bad");
+  setTimeout(() => { reveal(reason === "time" ? "Time's up · the answer is" : "Not quite · the answer is", "bad"); speak(cur.item.en); }, reason === "wrong" ? 450 : 0);
+  setTimeout(() => { G.pos++; nextItem(); }, 2400);
+}
+
+function finish() {
+  cur = null; show("end");
+  $("finalScore").textContent = G.score;
+  const ids = BRANCH.items.map((_, i) => i);
+  const first = ids.filter(i => G.result[i] === "first").length;
+  $("summary").textContent = `${first} of ${ids.length} phrases right on the first try.`;
+  const labels = { first: "First try", retry: "Second try", missed: "Missed" };
+  $("results").innerHTML = "";
+  ids.forEach(i => { const r = G.result[i] || "missed"; const li = document.createElement("li");
+    const s = document.createElement("span"); s.textContent = BRANCH.items[i].en;
+    const c = document.createElement("span"); c.className = "chip " + r; c.textContent = labels[r];
+    li.append(s, c); $("results").appendChild(li); });
+}
+
+/* Pause */
+function pause() { if (!cur || cur.locked) return; cur.timer.running = false; $("pauseOverlay").hidden = false; }
+function resume() { $("pauseOverlay").hidden = true; if (cur && !cur.locked) { cur.timer.last = performance.now(); cur.timer.running = true; } }
+$("pauseBtn").addEventListener("click", pause);
+$("resumeBtn").addEventListener("click", resume);
+$("quitBtn").addEventListener("click", () => { $("pauseOverlay").hidden = true; cancelAnimationFrame(raf); cur = null; show("start"); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+
+$("startBtn").addEventListener("click", () => { (document.fonts ? document.fonts.ready : Promise.resolve()).then(startGame); });
+$("againBtn").addEventListener("click", startGame);
+$("settingsBtn").addEventListener("click", () => show("start"));
+window.addEventListener("resize", () => { if (cur && !cur.locked) layoutTiles(); });
+</script>
