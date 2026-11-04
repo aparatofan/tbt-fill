@@ -19,6 +19,7 @@
   --tbtf-surface: var(--tbt-surface);
   --tbtf-ink: var(--tbt-ink);
   --tbtf-muted: var(--tbt-ink-soft);
+  --tbtf-lead: var(--tbt-ink-soft);
   --tbtf-line: #C8D5EA;
   --tbtf-blue: var(--tbt-blue);
   --tbtf-blue-soft: var(--tbt-blue-wash);
@@ -41,6 +42,7 @@
     --tbtf-surface: #142139;
     --tbtf-ink: #E8EEF8;
     --tbtf-muted: #94A3BD;
+    --tbtf-lead: #D7DFEC;
     --tbtf-line: #2A3B5A;
     --tbtf-blue: #5C9BFF;
     --tbtf-blue-soft: #1A2D4F;
@@ -59,41 +61,52 @@
    [hidden] guard; tripling the attribute out-ranks them. */
 .tbt [hidden][hidden][hidden] { display: none !important; }
 
-.tbt.tbtf-player { padding: var(--tbt-s4) 0; -webkit-tap-highlight-color: transparent; }
-.tbt.tbtf-player p, .tbt.tbtf-player h2, .tbt.tbtf-player ul, .tbt.tbtf-player li { margin: 0 !important; padding: 0 !important; }
+.tbt.tbtf-player { padding: 0; -webkit-tap-highlight-color: transparent; }
+/* Zero specificity, so it beats the theme's bare p/h2 rules (they are not
+   !important) while every margin set below still wins. */
+:where(.tbt.tbtf-player) :where(p, h2, ul, li) { margin: 0 !important; padding: 0 !important; }
 .tbt.tbtf-player button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; margin: 0; text-transform: none; letter-spacing: normal; line-height: normal; }
 .tbt.tbtf-player button:focus-visible { outline: 3px solid var(--tbtf-blue); outline-offset: 2px; }
 
 .tbtf-preview-banner {
-  max-width: 520px; margin: 0 auto var(--tbt-s3); background-color: #FFF6E0; border-left: 4px solid #B07605; color: #6B4700;
-  border-radius: 0 var(--tbt-r-md) var(--tbt-r-md) 0; padding: var(--tbt-s3) var(--tbt-s4); font-size: 15px;
+  flex: none; background-color: #FFF6E0; border-left: 4px solid #B07605; color: #6B4700;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); font-size: 15px;
 }
 .tbtf-preview-banner a { font-weight: 600; margin-left: var(--tbt-s2); }
 
-/* ---------- App shell ---------- */
-.tbtf-app, .tbtf-card {
-  max-width: 520px; margin: 0 auto; background: var(--tbtf-bg); color: var(--tbtf-ink);
-  font-family: var(--tbtf-font); border-radius: var(--tbt-r-xl); user-select: none; -webkit-user-select: none;
+/* ---------- App shell ----------
+   The game always covers the whole screen: a fixed layer, full dynamic
+   viewport height, safe areas honoured. It does not depend on the bare
+   template, so nothing around it (theme, cache or optimiser markup) can
+   show through as a frame. The start and end screens scroll inside the
+   layer if a small phone needs it; the game screen never scrolls. */
+html.tbtf-bare, .tbtf-bare-body { margin: 0; background: #F4F7FC; -webkit-text-size-adjust: 100%; }
+@media (prefers-color-scheme: dark) {
+  html.tbtf-bare, .tbtf-bare-body { background: #0B1322; }
 }
-.tbtf-card { padding: var(--tbt-s6) var(--tbt-s5); display: flex; flex-direction: column; gap: var(--tbt-s3); align-items: flex-start; }
+html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-behavior: none; }
+.tbtf-app, .tbtf-card {
+  position: fixed; inset: 0; z-index: 999999; width: auto; height: 100vh; height: 100dvh; margin: 0;
+  display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  background: var(--tbtf-bg); color: var(--tbtf-ink); font-family: var(--tbtf-font); user-select: none; -webkit-user-select: none;
+}
+.tbtf-card {
+  justify-content: center; align-items: flex-start; gap: var(--tbt-s3);
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px), calc((100% - 520px) / 2)) max(24px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px), calc((100% - 520px) / 2));
+}
 .tbtf-card .tbtf-primary { margin-top: var(--tbt-s3); }
 
 .tbtf-screen {
-  display: flex; flex-direction: column; min-height: min(640px, 88vh);
-  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 18px max(16px, env(safe-area-inset-left, 0px));
+  flex: 1 0 auto; width: 100%; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
+.tbtf-preview-banner + .tbtf-screen { padding-top: 20px; }
 
-/* Playing: a fixed layer over the whole viewport, page scroll locked. */
-html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-behavior: none; }
-.tbtf-app.is-playing {
-  position: fixed; inset: 0; z-index: 999999; max-width: none; border-radius: 0; margin: 0;
-  height: 100vh; height: 100dvh; overflow: hidden; touch-action: manipulation;
-}
+/* Playing: nothing scrolls, the field takes what the bottom leaves. */
+.tbtf-app.is-playing { overflow: hidden; touch-action: manipulation; }
+.tbt .tbtf-app.is-playing .tbtf-preview-banner { display: none; }
 .tbtf-app.is-playing .tbtf-field { min-height: 0; }
-.tbtf-app.is-playing .tbtf-screen--game {
-  height: 100%; min-height: 0; max-width: 520px; margin: 0 auto;
-  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-}
+.tbtf-app.is-playing .tbtf-screen--game { flex: 1 1 auto; min-height: 0; padding-top: max(12px, env(safe-area-inset-top, 0px)); }
 
 /* ---------- Start + end screens ---------- */
 .tbtf-intro { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
@@ -103,9 +116,9 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 }
 .tbt .tbtf-title {
   font-family: var(--tbtf-display) !important; font-size: 30px !important; line-height: 1.15 !important; font-weight: 700;
-  color: var(--tbtf-ink) !important; margin: 6px 0 10px !important; text-wrap: balance;
+  color: var(--tbtf-ink) !important; margin: 14px 0 18px !important; text-wrap: balance;
 }
-.tbt .tbtf-lead { font-size: 16px !important; line-height: 1.55 !important; color: var(--tbtf-muted) !important; max-width: 34ch; }
+.tbt .tbtf-lead { font-size: 16px !important; line-height: 1.55 !important; color: var(--tbtf-lead) !important; max-width: 34ch; }
 .tbtf-parade { position: relative; height: 60px; width: 240px; max-width: 100%; margin-top: 22px; }
 .tbtf-settings { display: flex; flex-direction: column; gap: 16px; }
 .tbt .tbtf-setting-label { font-size: 13px !important; color: var(--tbtf-muted) !important; margin-bottom: 6px !important; font-weight: 500; }
@@ -123,22 +136,6 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 .tbt .tbtf-best { font-size: 14px !important; color: var(--tbtf-muted) !important; text-align: center; font-weight: 500; }
 .tbtf-screen--end .tbtf-best { text-align: left; margin-top: 6px !important; }
 .tbtf-best.is-new { color: var(--tbtf-good) !important; font-weight: 600; }
-
-/* ---------- Bare page (templates/player-page.php): the game is the page ---------- */
-html.tbtf-bare { height: 100%; background: #F4F7FC; -webkit-text-size-adjust: 100%; }
-.tbtf-bare-body { margin: 0; min-height: 100%; background: #F4F7FC; }
-@media (prefers-color-scheme: dark) {
-  html.tbtf-bare, .tbtf-bare-body { background: #0B1322; }
-}
-.tbtf-bare .tbt.tbtf-player { padding: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--tbtf-bg); }
-.tbtf-bare .tbtf-app, .tbtf-bare .tbtf-card { flex: 1; width: 100%; border-radius: 0; }
-.tbtf-bare .tbtf-app { display: flex; flex-direction: column; }
-.tbtf-bare .tbtf-screen:not([hidden]) { flex: 1; min-height: 0; }
-.tbtf-bare .tbtf-screen--start, .tbtf-bare .tbtf-screen--end {
-  padding-top: max(20px, env(safe-area-inset-top, 0px)); padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
-}
-.tbtf-bare .tbtf-card { justify-content: center; padding: max(24px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); max-width: 520px; margin: 0 auto; }
-.tbtf-bare .tbtf-preview-banner { margin: 0 auto; width: 100%; border-radius: 0; }
 
 /* ---------- Top bar ---------- */
 .tbtf-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }

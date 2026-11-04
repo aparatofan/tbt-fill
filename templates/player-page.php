@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 $tbtf_game = do_shortcode( '[' . TBTF_Player::SHORTCODE . ']' );
 $tbtf_post = get_post();
 ?><!DOCTYPE html>
-<html <?php language_attributes(); ?> class="tbtf-bare">
+<html <?php language_attributes(); ?> class="tbtf-bare tbtf-lock">
 <head>
 <meta charset="<?php bloginfo( 'charset' ); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

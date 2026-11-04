@@ -27,10 +27,10 @@ Open to everyone, no login: the games are for people who bought the book. To res
 
 The student page is served without the theme (`templates/player-page.php`): no site header, menu, footer or admin bar, and only Fill's own CSS and JS. The rest of the page's content is ignored; only the game is shown. To use the theme's template again, return `false` from the `tbtf_bare_player_page` filter.
 
-- Timer per phrase: `base + perWord × words` (Relaxed 5 + 1.5, Standard 4 + 1, Fast 3 + 0.7).
+- Timer per phrase: `base + perWord × words` (Relaxed 8 + 2.5, Standard 6 + 1.8, Fast 3 + 0.7; Relaxed and Standard were lengthened after the first class test).
 - Correct: `10 + 2 × ceil(seconds left)`. Wrong or time out: −5 (floor 0), and the phrase comes back once at the end of the queue.
 - The pace and audio choice and the best score per set are kept in `localStorage`. Nothing about students is stored on the server.
-- While playing, the game is a fixed full-screen layer (100dvh, safe areas honoured), so nothing scrolls. Long phrases on small phones switch to a compact tile size (still at least 48px tall).
+- The game is always a fixed full-screen layer (100dvh, safe areas honoured), so no page margin shows and nothing scrolls during play. It follows the phone's light or dark setting. Long phrases on small phones switch to a compact tile size (still at least 48px tall).
 
 ## Phrase → tiles
 
