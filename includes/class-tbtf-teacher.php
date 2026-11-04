@@ -57,6 +57,11 @@ class TBTF_Teacher {
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 			define( 'DONOTCACHEPAGE', true );
 		}
+		// LiteSpeed also rewrites CSS/JS into its own minified copies, which
+		// can outlive a deploy. Serve Fill's files as they are.
+		if ( ! defined( 'LITESPEED_NO_OPTM' ) ) {
+			define( 'LITESPEED_NO_OPTM', true );
+		}
 	}
 
 	/**
@@ -69,10 +74,10 @@ class TBTF_Teacher {
 		}
 		self::$enqueued = true;
 
-		wp_enqueue_style( 'tbtf-tokens', TBTF_URL . 'assets/css/tbt-tokens.css', array(), TBTF_VERSION );
-		wp_enqueue_style( 'tbtf-teacher', TBTF_URL . 'assets/css/teacher.css', array( 'tbtf-tokens' ), TBTF_VERSION );
-		wp_enqueue_script( 'tbtf-qrcode', TBTF_URL . 'assets/js/lib/qrcode.min.js', array(), TBTF_VERSION, true );
-		wp_enqueue_script( 'tbtf-teacher', TBTF_URL . 'assets/js/teacher.js', array( 'tbtf-qrcode' ), TBTF_VERSION, true );
+		wp_enqueue_style( 'tbtf-tokens', TBTF_URL . 'assets/css/tbt-tokens.css', array(), tbtf_asset_ver( 'assets/css/tbt-tokens.css' ) );
+		wp_enqueue_style( 'tbtf-teacher', TBTF_URL . 'assets/css/teacher.css', array( 'tbtf-tokens' ), tbtf_asset_ver( 'assets/css/teacher.css' ) );
+		wp_enqueue_script( 'tbtf-qrcode', TBTF_URL . 'assets/js/lib/qrcode.min.js', array(), tbtf_asset_ver( 'assets/js/lib/qrcode.min.js' ), true );
+		wp_enqueue_script( 'tbtf-teacher', TBTF_URL . 'assets/js/teacher.js', array( 'tbtf-qrcode' ), tbtf_asset_ver( 'assets/js/teacher.js' ), true );
 
 		wp_localize_script(
 			'tbtf-teacher',

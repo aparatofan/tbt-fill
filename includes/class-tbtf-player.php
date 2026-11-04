@@ -76,6 +76,11 @@ class TBTF_Player {
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 			define( 'DONOTCACHEPAGE', true );
 		}
+		// LiteSpeed also rewrites CSS/JS into its own minified copies, which
+		// can outlive a deploy. Serve Fill's files as they are.
+		if ( ! defined( 'LITESPEED_NO_OPTM' ) ) {
+			define( 'LITESPEED_NO_OPTM', true );
+		}
 	}
 
 	public function maybe_enqueue() {
@@ -91,9 +96,9 @@ class TBTF_Player {
 		}
 		$done = true;
 
-		wp_enqueue_style( 'tbtf-tokens', TBTF_URL . 'assets/css/tbt-tokens.css', array(), TBTF_VERSION );
-		wp_enqueue_style( 'tbtf-player', TBTF_URL . 'assets/css/player.css', array( 'tbtf-tokens' ), TBTF_VERSION );
-		wp_enqueue_script( 'tbtf-player', TBTF_URL . 'assets/js/player.js', array(), TBTF_VERSION, true );
+		wp_enqueue_style( 'tbtf-tokens', TBTF_URL . 'assets/css/tbt-tokens.css', array(), tbtf_asset_ver( 'assets/css/tbt-tokens.css' ) );
+		wp_enqueue_style( 'tbtf-player', TBTF_URL . 'assets/css/player.css', array( 'tbtf-tokens' ), tbtf_asset_ver( 'assets/css/player.css' ) );
+		wp_enqueue_script( 'tbtf-player', TBTF_URL . 'assets/js/player.js', array(), tbtf_asset_ver( 'assets/js/player.js' ), true );
 
 		wp_localize_script(
 			'tbtf-player',

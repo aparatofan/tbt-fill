@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TBT Fill
  * Description:       A mobile word-tile game for one branch of a HOW TO SAY IT IN ENGLISH mind map. Students read the Polish cue and tap the English words into place before the monsters catch up; audio models each phrase afterwards.
- * Version:           1.2.1
+ * Version:           1.2.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,11 +12,24 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBTF_VERSION', '1.2.1' );
+define( 'TBTF_VERSION', '1.2.2' );
 define( 'TBTF_DB_VERSION', '1.0' );
 define( 'TBTF_PLUGIN_FILE', __FILE__ );
 define( 'TBTF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBTF_URL', plugin_dir_url( __FILE__ ) );
+
+/**
+ * Version string for one asset: the plugin version plus the file's modified
+ * time. Every deploy changes the asset URLs, so no browser, CDN, optimiser
+ * or stale PHP cache can keep serving an older copy of the CSS or JS.
+ *
+ * @param string $rel Path relative to the plugin folder.
+ * @return string
+ */
+function tbtf_asset_ver( $rel ) {
+	$mtime = @filemtime( TBTF_DIR . $rel ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	return TBTF_VERSION . ( $mtime ? '.' . $mtime : '' );
+}
 
 /**
  * The one capability that gates set CRUD and audio generation. Site
