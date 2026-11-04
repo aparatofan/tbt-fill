@@ -23,10 +23,28 @@ $tbtf_post = get_post();
 <meta name="theme-color" content="#F4F7FC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B1322" media="(prefers-color-scheme: dark)">
 <title><?php echo esc_html( $tbtf_post ? get_the_title( $tbtf_post ) : __( 'Fill', 'tbt-fill' ) ); ?></title>
-<?php wp_print_styles( array( 'tbtf-tokens', 'tbtf-player' ) ); ?>
+<?php
+// The CSS and JS go inside the page rather than as file links: a cache in
+// front of the live site kept serving old copies of the files. See
+// TBTF_Player::inline_css(). The links remain as a fallback.
+$tbtf_css = TBTF_Player::inline_css();
+$tbtf_js  = TBTF_Player::inline_js();
+if ( '' !== $tbtf_css ) {
+	echo '<style id="tbtf-inline-css">' . $tbtf_css . '</style>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the plugin's own stylesheet.
+} else {
+	wp_print_styles( array( 'tbtf-tokens', 'tbtf-player' ) );
+}
+?>
 </head>
 <body class="tbtf-bare-body">
 <?php echo $tbtf_game; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in TBTF_Player. ?>
-<?php wp_print_scripts( array( 'tbtf-player' ) ); ?>
+<?php
+if ( '' !== $tbtf_js ) {
+	echo '<script>var tbtfPlayer = ' . wp_json_encode( TBTF_Player::script_data() ) . ';</script>' . "\n";
+	echo '<script id="tbtf-inline-js">' . $tbtf_js . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the plugin's own script.
+} else {
+	wp_print_scripts( array( 'tbtf-player' ) );
+}
+?>
 </body>
 </html>
