@@ -283,6 +283,7 @@ class TBTF_Player {
 			'label' => (string) $set->label,
 			'pace'  => in_array( $set->pace_default, TBTF_DB::PACES, true ) ? (string) $set->pace_default : 'standard',
 			'items' => $out,
+			'cheer' => TBTF_Audio::cheer_url(),
 		);
 	}
 
@@ -331,6 +332,13 @@ class TBTF_Player {
 								<button type="button" data-v="relaxed"><?php esc_html_e( 'Relaxed', 'tbt-fill' ); ?></button>
 								<button type="button" data-v="standard"><?php esc_html_e( 'Standard', 'tbt-fill' ); ?></button>
 								<button type="button" data-v="fast"><?php esc_html_e( 'Fast', 'tbt-fill' ); ?></button>
+							</div>
+						</div>
+						<div class="tbtf-setting">
+							<p class="tbtf-setting-label" id="tbtf-l-sfx"><?php esc_html_e( 'Sound effects', 'tbt-fill' ); ?></p>
+							<div class="tbtf-seg" role="group" aria-labelledby="tbtf-l-sfx" data-key="sfx">
+								<button type="button" data-v="on"><?php esc_html_e( 'On', 'tbt-fill' ); ?></button>
+								<button type="button" data-v="off"><?php esc_html_e( 'Off', 'tbt-fill' ); ?></button>
 							</div>
 						</div>
 						<?php if ( $has_audio ) : ?>

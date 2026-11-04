@@ -106,6 +106,405 @@
 		}
 	};
 
+	/* ---------- Sound effects ----------
+	   Made in the browser with Web Audio, so there are no files to fetch,
+	   cache or license. The context is created on the Start tap, which is
+	   what unlocks sound on iOS and Android. The end-of-round cheer is the
+	   one recorded sound: an MP3 the server made once with ElevenLabs,
+	   decoded into the same context; without it the game claps itself. */
+	var Sfx = {
+		ctx: null,
+		out: null,
+		noise: null,
+		cheer: null,
+
+		/** Create or wake the context. Call from a tap. */
+		unlock: function () {
+			var AC = window.AudioContext || window.webkitAudioContext;
+			if ( ! AC ) {
+				return false;
+			}
+			try {
+				if ( ! this.ctx ) {
+					this.ctx = new AC();
+					this.out = this.ctx.createGain();
+					this.out.gain.value = 0.55;
+					this.out.connect( this.ctx.destination );
+				}
+				if ( this.ctx.state === 'suspended' ) {
+					this.ctx.resume();
+				}
+			} catch ( e ) {
+				this.ctx = null;
+			}
+			return !! this.ctx;
+		},
+
+		/** Fetch and decode the cheer once, in the background. */
+		loadCheer: function ( url ) {
+			var self = this;
+			if ( ! url || self.cheer || ! self.ctx || ! window.fetch ) {
+				return;
+			}
+			self.cheer = 'loading';
+			fetch( url ).then( function ( r ) {
+				return r.ok ? r.arrayBuffer() : Promise.reject();
+			} ).then( function ( buf ) {
+				return new Promise( function ( ok, no ) {
+					// Old Safari only has the callback form.
+					var p = self.ctx.decodeAudioData( buf, ok, no );
+					if ( p && p.then ) {
+						p.then( ok, no );
+					}
+				} );
+			} ).then( function ( decoded ) {
+				self.cheer = decoded;
+			} ).catch( function () {
+				self.cheer = null;
+			} );
+		},
+
+		tone: function ( freq, at, dur, type, vol, toFreq ) {
+			var c = this.ctx;
+			var t = c.currentTime + at;
+			var o = c.createOscillator();
+			var g = c.createGain();
+			o.type = type || 'sine';
+			o.frequency.setValueAtTime( freq, t );
+			if ( toFreq ) {
+				o.frequency.exponentialRampToValueAtTime( toFreq, t + dur );
+			}
+			g.gain.setValueAtTime( 0.0001, t );
+			g.gain.exponentialRampToValueAtTime( vol, t + 0.012 );
+			g.gain.exponentialRampToValueAtTime( 0.0001, t + dur );
+			o.connect( g );
+			g.connect( this.out );
+			o.start( t );
+			o.stop( t + dur + 0.03 );
+		},
+
+		noiseBuffer: function () {
+			if ( ! this.noise ) {
+				var len = this.ctx.sampleRate;
+				this.noise = this.ctx.createBuffer( 1, len, this.ctx.sampleRate );
+				var d = this.noise.getChannelData( 0 );
+				for ( var i = 0; i < len; i++ ) {
+					d[ i ] = Math.random() * 2 - 1;
+				}
+			}
+			return this.noise;
+		},
+
+		/** One hand clap: a short burst of filtered noise. */
+		clap: function ( at, vol ) {
+			var c = this.ctx;
+			var t = c.currentTime + at;
+			var src = c.createBufferSource();
+			src.buffer = this.noiseBuffer();
+			var f = c.createBiquadFilter();
+			f.type = 'bandpass';
+			f.frequency.value = 900 + Math.random() * 1600;
+			f.Q.value = 0.9;
+			var g = c.createGain();
+			var len = 0.025 + Math.random() * 0.04;
+			g.gain.setValueAtTime( 0.0001, t );
+			g.gain.exponentialRampToValueAtTime( vol, t + 0.004 );
+			g.gain.exponentialRampToValueAtTime( 0.0001, t + len );
+			src.connect( f );
+			f.connect( g );
+			g.connect( this.out );
+			src.start( t, Math.random() * 0.9, len + 0.02 );
+		},
+
+		play: function ( name ) {
+			if ( ! this.ctx ) {
+				return;
+			}
+			try {
+				// A phone suspends the context when the page was in the background.
+				if ( this.ctx.state === 'suspended' ) {
+					this.ctx.resume();
+				}
+				this[ 'fx_' + name ]();
+			} catch ( e ) {}
+		},
+
+		/** A word in the right slot: a light rising ding. */
+		fx_good: function () {
+			this.tone( 880, 0, 0.13, 'sine', 0.32 );
+			this.tone( 1320, 0.055, 0.16, 'sine', 0.24 );
+		},
+		/** A word in the wrong slot: a soft low bonk. */
+		fx_bad: function () {
+			this.tone( 220, 0, 0.2, 'triangle', 0.42, 140 );
+		},
+		/** The whole phrase right: a quick rising arpeggio. */
+		fx_win: function () {
+			var self = this;
+			[ 523.25, 659.25, 783.99, 1046.5 ].forEach( function ( f, i ) {
+				self.tone( f, i * 0.075, 0.24, 'sine', 0.28 );
+				self.tone( f * 2, i * 0.075, 0.12, 'sine', 0.06 );
+			} );
+		},
+		/** Wrong or out of time: two falling low tones. */
+		fx_lose: function () {
+			this.tone( 247, 0, 0.22, 'triangle', 0.4, 196 );
+			this.tone( 185, 0.2, 0.36, 'triangle', 0.4, 123 );
+		},
+		/** The end: the recorded cheer if there is one, else applause. */
+		fx_cheer: function () {
+			if ( this.cheer && this.cheer !== 'loading' ) {
+				var src = this.ctx.createBufferSource();
+				src.buffer = this.cheer;
+				src.connect( this.out );
+				src.start();
+				return;
+			}
+			// About 3s of a small room clapping: dense at first, thinning out.
+			for ( var i = 0; i < 150; i++ ) {
+				var at = Math.pow( Math.random(), 1.6 ) * 3;
+				this.clap( at, ( 0.5 + Math.random() * 0.5 ) * ( 1 - at / 3.6 ) );
+			}
+			this.fx_win();
+		}
+	};
+
+	/* ---------- Fireworks ----------
+	   Ported from TBT Swipe's end-of-deck celebration (deck.js,
+	   fireFireworks) so the two tools celebrate the same way: shells rise
+	   and burst on one canvas for ~5.8s, then the canvas is removed. The
+	   caller skips it for reduced motion. On the light background the
+	   sparks use the strong palette without glow; in dark mode, the pale
+	   palette with additive glow, as Swipe does on its blue phone field. */
+	var FX_MS = 5800;
+	var FX_FADE = 500;
+	var FX_OUT = 600;
+	var FX_GRAV = 0.00042;
+	var FX_DRAG = 0.9945;
+	var FX_TAIL = 50;
+	var FX_SHELLS = 15;
+	var FX_SPARKS = 110;
+	var FX_SPREAD = 3.4;
+	var FX_LIFE = 1.5;
+	var FX_PALETTE_DARK = [ '#FFFFFF', '#FFD466', '#7FE0A6', '#BFD4FF', '#FFAECF', '#CC9933' ];
+	var FX_PALETTE_LIGHT = [ '#0856C9', '#E8A317', '#2FAE6A', '#5B8DEF', '#D9469B', '#C87A12' ];
+
+	function fireworks( host ) {
+		if ( ! window.requestAnimationFrame ) {
+			return;
+		}
+		var canvas = document.createElement( 'canvas' );
+		var ctx = canvas.getContext ? canvas.getContext( '2d' ) : null;
+		if ( ! ctx ) {
+			return;
+		}
+		var w = window.innerWidth;
+		var h = window.innerHeight;
+		var dpr = Math.min( window.devicePixelRatio || 1, 2 );
+		canvas.className = 'tbtf-fx';
+		canvas.width = Math.round( w * dpr );
+		canvas.height = Math.round( h * dpr );
+		canvas.style.width = w + 'px';
+		canvas.style.height = h + 'px';
+		canvas.setAttribute( 'aria-hidden', 'true' );
+		ctx.scale( dpr, dpr );
+		ctx.lineCap = 'round';
+		host.appendChild( canvas );
+
+		var dark = !! ( window.matchMedia && window.matchMedia( '(prefers-color-scheme: dark)' ).matches );
+		var colors = dark ? FX_PALETTE_DARK : FX_PALETTE_LIGHT;
+		var glow = dark;
+		var rgb = colors.map( function ( c ) {
+			return 'rgba(' + parseInt( c.slice( 1, 3 ), 16 ) + ',' + parseInt( c.slice( 3, 5 ), 16 ) + ',' + parseInt( c.slice( 5, 7 ), 16 ) + ',';
+		} );
+
+		// Sparks are bucketed by colour × alpha × width and each bucket is
+		// stroked as one path: 1,650 separate strokes a frame drop frames on
+		// a mid-range phone.
+		var ALPHA_STEPS = 8;
+		var WIDTH_STEPS = 3;
+		var bucketCount = colors.length * ALPHA_STEPS * WIDTH_STEPS;
+		var buckets = [];
+		for ( var b = 0; b < bucketCount; b++ ) {
+			buckets.push( [] );
+		}
+
+		var below = h + 12;
+		var shells = [];
+		var sparks = [];
+		var flashes = [];
+		var launchWindow = FX_MS * 0.6;
+		var finaleCount = Math.max( 3, Math.round( FX_SHELLS * 0.22 ) );
+		var mainCount = FX_SHELLS - finaleCount;
+		for ( var i = 0; i < FX_SHELLS; i++ ) {
+			var at;
+			if ( i >= mainCount ) {
+				at = launchWindow + Math.random() * 260;
+			} else if ( i === 0 ) {
+				at = 0;
+			} else if ( i === 1 ) {
+				at = 90;
+			} else {
+				at = ( i / ( mainCount - 1 ) ) * launchWindow * 0.86;
+			}
+			at = Math.max( 0, at + ( Math.random() * 2 - 1 ) * 130 );
+			var burstY = h * ( 0.16 + Math.random() * 0.3 );
+			var rise = 520 + Math.random() * 220;
+			shells.push( {
+				x: w * ( 0.12 + Math.random() * 0.76 ),
+				y: below,
+				burstY: burstY,
+				vy: -( below - burstY ) / rise,
+				at: at,
+				ci: i % colors.length,
+				live: false,
+				done: false
+			} );
+		}
+
+		function burst( shell ) {
+			var base = Math.random() * Math.PI * 2;
+			var slice = ( Math.PI * 2 ) / FX_SPARKS;
+			var sMin = 0.1 * FX_SPREAD;
+			var sMax = 0.34 * FX_SPREAD;
+			var wSpan = 0.9 + FX_SPREAD * 0.32;
+			for ( var s = 0; s < FX_SPARKS; s++ ) {
+				var ang = base + s * slice + ( Math.random() - 0.5 ) * slice;
+				var speed = sMin + ( sMax - sMin ) * Math.sqrt( Math.random() );
+				var width = 1.5 + Math.random() * wSpan;
+				sparks.push( {
+					x: shell.x,
+					y: shell.y,
+					vx: Math.cos( ang ) * speed,
+					vy: Math.sin( ang ) * speed,
+					ci: ( glow && Math.random() < 0.1 ) ? 0 : shell.ci,
+					wb: Math.min( WIDTH_STEPS - 1, ( ( width - 1.5 ) / wSpan * WIDTH_STEPS ) | 0 ),
+					ttl: ( 1000 + Math.random() * 700 ) * FX_LIFE,
+					crackle: Math.random() < 0.45,
+					age: 0
+				} );
+			}
+			flashes.push( { x: shell.x, y: shell.y, ci: shell.ci, age: 0, ttl: 260, r: 26 + FX_SPREAD * 26 } );
+		}
+
+		var last = performance.now();
+		var elapsed = 0;
+
+		function frame() {
+			var t = performance.now();
+			var dt = Math.min( 34, t - last );
+			last = t;
+			elapsed += dt;
+			if ( ! canvas.parentNode ) {
+				return;
+			}
+			if ( elapsed > FX_MS ) {
+				canvas.remove();
+				return;
+			}
+			ctx.clearRect( 0, 0, w, h );
+			ctx.globalCompositeOperation = glow ? 'lighter' : 'source-over';
+			var out = elapsed > FX_MS - FX_OUT ? ( FX_MS - elapsed ) / FX_OUT : 1;
+			var drag = Math.pow( FX_DRAG, dt );
+			var n, p;
+
+			for ( n = flashes.length - 1; n >= 0; n-- ) {
+				var fl = flashes[ n ];
+				fl.age += dt;
+				if ( fl.age >= fl.ttl ) {
+					flashes.splice( n, 1 );
+					continue;
+				}
+				var k = fl.age / fl.ttl;
+				var fade = ( 1 - k ) * ( 1 - k );
+				var rad = fl.r * ( 0.4 + 1.9 * k );
+				var pre = rgb[ fl.ci ];
+				var grad = ctx.createRadialGradient( fl.x, fl.y, 0, fl.x, fl.y, rad );
+				grad.addColorStop( 0, glow ? 'rgba(255,255,255,' + ( 0.85 * fade * out ) + ')' : pre + ( 0.85 * fade * out ) + ')' );
+				grad.addColorStop( 0.4, pre + ( 0.35 * fade * out ) + ')' );
+				grad.addColorStop( 1, pre + '0)' );
+				ctx.globalAlpha = 1;
+				ctx.fillStyle = grad;
+				ctx.beginPath();
+				ctx.arc( fl.x, fl.y, rad, 0, Math.PI * 2 );
+				ctx.fill();
+			}
+
+			for ( n = 0; n < shells.length; n++ ) {
+				var sh = shells[ n ];
+				if ( sh.done ) {
+					continue;
+				}
+				if ( ! sh.live ) {
+					if ( elapsed < sh.at ) {
+						continue;
+					}
+					sh.live = true;
+				}
+				sh.y += sh.vy * dt;
+				if ( sh.y <= sh.burstY ) {
+					sh.y = sh.burstY;
+					sh.done = true;
+					burst( sh );
+					continue;
+				}
+				ctx.globalAlpha = 1;
+				ctx.strokeStyle = colors[ sh.ci ];
+				ctx.lineWidth = 2;
+				ctx.beginPath();
+				ctx.moveTo( sh.x, Math.min( sh.y + 14, below ) );
+				ctx.lineTo( sh.x, sh.y );
+				ctx.stroke();
+			}
+
+			for ( n = 0; n < bucketCount; n++ ) {
+				buckets[ n ].length = 0;
+			}
+			for ( n = 0; n < sparks.length; n++ ) {
+				p = sparks[ n ];
+				p.age += dt;
+				var leftMs = p.ttl - p.age;
+				if ( leftMs <= 0 ) {
+					continue;
+				}
+				p.vy += FX_GRAV * dt;
+				p.vx *= drag;
+				p.vy *= drag;
+				p.x += p.vx * dt;
+				p.y += p.vy * dt;
+				var a = leftMs < FX_FADE ? leftMs / FX_FADE : 1;
+				if ( p.crackle && p.age > p.ttl * 0.5 && Math.random() < 0.45 ) {
+					a *= 0.18;
+				}
+				if ( a < 0.02 ) {
+					continue;
+				}
+				var ab = Math.min( ALPHA_STEPS - 1, ( a * ALPHA_STEPS ) | 0 );
+				buckets[ ( p.ci * ALPHA_STEPS + ab ) * WIDTH_STEPS + p.wb ].push( p.x - p.vx * FX_TAIL, p.y - p.vy * FX_TAIL, p.x, p.y );
+			}
+			for ( n = 0; n < bucketCount; n++ ) {
+				var quads = buckets[ n ];
+				if ( ! quads.length ) {
+					continue;
+				}
+				var wb = n % WIDTH_STEPS;
+				var rest = ( n - wb ) / WIDTH_STEPS;
+				var abi = rest % ALPHA_STEPS;
+				ctx.globalAlpha = ( abi + 1 ) / ALPHA_STEPS * out;
+				ctx.strokeStyle = colors[ ( rest - abi ) / ALPHA_STEPS ];
+				ctx.lineWidth = 1.8 + wb * 1.2;
+				ctx.beginPath();
+				for ( var v = 0; v < quads.length; v += 4 ) {
+					ctx.moveTo( quads[ v ], quads[ v + 1 ] );
+					ctx.lineTo( quads[ v + 2 ], quads[ v + 3 ] );
+				}
+				ctx.stroke();
+			}
+			window.requestAnimationFrame( frame );
+		}
+		window.requestAnimationFrame( frame );
+	}
+
 	/** Let env(safe-area-inset-*) report real values on notched phones. */
 	function ensureViewportFit() {
 		var meta = document.querySelector( 'meta[name="viewport"]' );
@@ -174,8 +573,18 @@
 		var hasAudio = !! app.querySelector( '[data-key="audio"]' );
 		var settings = {
 			pace: PACE[ store.get( 'pace' ) ] ? store.get( 'pace' ) : ( PACE[ SET.pace ] ? SET.pace : 'standard' ),
-			audio: hasAudio && store.get( 'audio' ) !== 'off' ? 'on' : 'off'
+			audio: hasAudio && store.get( 'audio' ) !== 'off' ? 'on' : 'off',
+			sfx: store.get( 'sfx' ) === 'off' ? 'off' : 'on'
 		};
+		function sfx( name ) {
+			if ( settings.sfx === 'on' ) {
+				Sfx.play( name );
+			}
+		}
+		// The spoken phrase waits for the result sound to finish.
+		function speechDelay() {
+			return settings.sfx === 'on' ? 550 : 0;
+		}
 
 		Array.prototype.forEach.call( app.querySelectorAll( '.tbtf-seg' ), function ( seg ) {
 			var key = seg.getAttribute( 'data-key' );
@@ -280,6 +689,9 @@
 			} );
 			app.classList.toggle( 'is-playing', id === 'game' );
 			app.scrollTop = 0;
+			if ( id !== 'end' ) {
+				Array.prototype.forEach.call( app.querySelectorAll( '.tbtf-fx' ), function ( c ) { c.remove(); } );
+			}
 		}
 
 		/* ---------- Chase ---------- */
@@ -571,6 +983,9 @@
 			renderSlots();
 			if ( cur.slots.indexOf( null ) === -1 ) {
 				check();
+			} else {
+				// Each word as it is placed: right slot or not.
+				sfx( cur.tiles[ id ].text === cur.answer[ k ] ? 'good' : 'bad' );
 			}
 		}
 
@@ -643,7 +1058,9 @@
 			el.gap.classList.add( 'is-gone' );
 			hero.className = 'tbtf-critter tbtf-hero is-escape';
 			later( function () { reveal( t.correct, 'is-good' ); }, 350 );
-			playAudio( cur.item );
+			sfx( 'win' );
+			var item = cur.item;
+			later( function () { playAudio( item ); }, speechDelay() );
 			later( function () {
 				G.pos++;
 				nextItem();
@@ -672,10 +1089,11 @@
 				el.slots.classList.add( 'is-bad' );
 			}
 			var item = cur.item;
+			sfx( 'lose' );
 			later( function () {
 				reveal( reason === 'time' ? t.timeUp : t.notQuite, 'is-bad' );
-				playAudio( item );
 			}, reason === 'wrong' ? 450 : 0 );
+			later( function () { playAudio( item ); }, Math.max( reason === 'wrong' ? 450 : 0, speechDelay() + 150 ) );
 			later( function () {
 				G.pos++;
 				nextItem();
@@ -696,6 +1114,13 @@
 			}
 			showBest( q( 'end-best' ), isNew && G.score > 0 );
 			showBest( q( 'best' ), false );
+
+			// The celebration: fireworks (unless motion is unwelcome) and the
+			// cheer (unless sound effects are off).
+			if ( ! reducedMotion() ) {
+				fireworks( app );
+			}
+			sfx( 'cheer' );
 
 			var labels = { first: t.firstTry, retry: t.secondTry, missed: t.missed };
 			var list = q( 'results' );
@@ -753,9 +1178,15 @@
 
 		q( 'start' ).addEventListener( 'click', function () {
 			unlockAudio();
+			if ( Sfx.unlock() ) {
+				Sfx.loadCheer( SET.cheer );
+			}
 			( document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve() ).then( startGame );
 		} );
-		q( 'again' ).addEventListener( 'click', startGame );
+		q( 'again' ).addEventListener( 'click', function () {
+			Sfx.unlock();
+			startGame();
+		} );
 		q( 'settings' ).addEventListener( 'click', function () { show( 'start' ); } );
 
 		var resizeTimer = 0;

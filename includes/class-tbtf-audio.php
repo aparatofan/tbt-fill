@@ -31,6 +31,14 @@ class TBTF_Audio {
 
 	const ENDPOINT = 'https://api.elevenlabs.io/v1/text-to-speech/';
 
+	/** ElevenLabs sound effects, for the end-of-round cheer. */
+	const SFX_ENDPOINT = 'https://api.elevenlabs.io/v1/sound-generation';
+
+	/** What the end-of-round cheer should sound like. Changing it makes a new file. */
+	const CHEER_PROMPT = 'A small happy group of children and adults cheering "hooray!" and clapping enthusiastically, short joyful celebration';
+
+	const CHEER_SECONDS = 4;
+
 	/** Seconds one ElevenLabs request may take. */
 	const TIMEOUT = 30;
 
@@ -244,6 +252,78 @@ class TBTF_Audio {
 			return '';
 		}
 		return false === @file_put_contents( $path, $body ) ? '' : $file; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
+
+	/**
+	 * The end-of-round cheer's filename: one file for the whole site.
+	 *
+	 * @return string
+	 */
+	private static function cheer_file() {
+		return 'cheer-' . md5( self::CHEER_PROMPT . '|' . self::CHEER_SECONDS ) . '.mp3';
+	}
+
+	/**
+	 * The cheer's URL if it has been made, else ''. Never generates: students
+	 * must not wait on ElevenLabs. The game falls back to applause it makes
+	 * itself.
+	 *
+	 * @return string
+	 */
+	public static function cheer_url() {
+		$dir = self::dir();
+		if ( '' === $dir || ! is_file( $dir . '/' . self::cheer_file() ) ) {
+			return '';
+		}
+		return self::url( self::cheer_file() );
+	}
+
+	/**
+	 * Make the cheer once, with ElevenLabs' sound-effects endpoint. Called
+	 * when a set is published. After a failure it waits an hour before the
+	 * next try, so a key without sound-effects access does not slow every save.
+	 *
+	 * @return bool Whether the file exists now.
+	 */
+	public static function ensure_cheer() {
+		$key = self::api_key();
+		$dir = self::dir();
+		if ( '' === $key || '' === $dir ) {
+			return false;
+		}
+		$path = $dir . '/' . self::cheer_file();
+		if ( is_file( $path ) && filesize( $path ) > 0 ) {
+			return true;
+		}
+		if ( get_transient( 'tbtf_cheer_failed' ) ) {
+			return false;
+		}
+		$response = wp_remote_post(
+			self::SFX_ENDPOINT,
+			array(
+				'timeout' => self::TIMEOUT,
+				'headers' => array(
+					'xi-api-key'   => $key,
+					'Content-Type' => 'application/json',
+					'Accept'       => 'audio/mpeg',
+				),
+				'body'    => wp_json_encode(
+					array(
+						'text'             => self::CHEER_PROMPT,
+						'duration_seconds' => self::CHEER_SECONDS,
+						'prompt_influence' => 0.4,
+					)
+				),
+			)
+		);
+		$ok = ! is_wp_error( $response )
+			&& 200 === (int) wp_remote_retrieve_response_code( $response )
+			&& strlen( (string) wp_remote_retrieve_body( $response ) ) > 0
+			&& false !== @file_put_contents( $path, (string) wp_remote_retrieve_body( $response ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		if ( ! $ok ) {
+			set_transient( 'tbtf_cheer_failed', 1, HOUR_IN_SECONDS );
+		}
+		return $ok;
 	}
 
 	/**
