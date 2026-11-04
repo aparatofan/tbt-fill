@@ -248,6 +248,8 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 .tbt .tbtf-overlay h2 { font-family: var(--tbtf-display) !important; font-size: 24px !important; color: var(--tbtf-ink) !important; margin: 0 0 8px !important; }
 
 /* ---------- End screen ---------- */
+/* Fireworks over the whole screen; taps go through to the buttons. */
+.tbtf-fx { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 .tbt .tbtf-big { font-family: var(--tbtf-display); font-size: 64px !important; font-weight: 700; color: var(--tbtf-blue) !important; line-height: 1 !important; font-variant-numeric: tabular-nums; margin: 6px 0 10px !important; }
 .tbtf-results { list-style: none !important; display: flex; flex-direction: column; gap: 8px; }
 .tbt.tbtf-player .tbtf-results li {

@@ -29,7 +29,8 @@ The student page is served without the theme (`templates/player-page.php`): no s
 
 - Timer per phrase: `base + perWord × words` (Relaxed 8 + 2.5, Standard 6 + 1.8, Fast 3 + 0.7; Relaxed and Standard were lengthened after the first class test).
 - Correct: `10 + 2 × ceil(seconds left)`. Wrong or time out: −5 (floor 0), and the phrase comes back once at the end of the queue.
-- The pace and audio choice and the best score per set are kept in `localStorage`. Nothing about students is stored on the server.
+- **Sound effects** (On/Off on the start screen, default On): a ding for each word placed in its right slot, a low bonk for a wrong slot, a rising chime for a right phrase and two falling tones for a wrong one or time out. They are made in the browser with Web Audio, so there are no files. At the end of a round: fireworks (as in TBT Swipe; skipped for reduced motion) and a cheer, a clapping-and-hooray sound made once per site with ElevenLabs' sound-effects endpoint when a set is published. Without that file the game makes its own applause.
+- The pace, audio and sound-effects choices and the best score per set are kept in `localStorage`. Nothing about students is stored on the server.
 - The game is always a fixed full-screen layer (100dvh, safe areas honoured), so no page margin shows and nothing scrolls during play. It follows the phone's light or dark setting. Long phrases on small phones switch to a compact tile size (still at least 48px tall).
 
 ## Phrase → tiles

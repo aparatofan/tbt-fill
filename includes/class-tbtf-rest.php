@@ -196,6 +196,7 @@ class TBTF_Rest {
 		// builder and the player simply skips audio for it.
 		if ( TBTF_DB::STATUS_PUBLISHED === $status ) {
 			TBTF_Audio::generate_for_set( $set_id );
+			TBTF_Audio::ensure_cheer();
 		}
 
 		$saved = TBTF_DB::get_set( $set_id );
