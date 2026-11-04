@@ -567,7 +567,7 @@ class TBTF_Teacher {
 								<button type="button" class="tbtf-btn tbtf-btn--ghost" data-role="share-copy"><?php esc_html_e( 'Copy link', 'tbt-fill' ); ?></button>
 								<a class="tbtf-btn tbtf-btn--ghost tbtf-btn--fill" data-role="share-open" href="#" target="_blank" rel="noopener"><?php esc_html_e( 'Open', 'tbt-fill' ); ?></a>
 							</div>
-							<p class="tbtf-help"><?php esc_html_e( 'Students must be logged in to TBT to open it. The link stays the same when you edit the set later.', 'tbt-fill' ); ?></p>
+							<p class="tbtf-help"><?php esc_html_e( 'Anyone with the link can play — no login needed. The link stays the same when you edit the set later.', 'tbt-fill' ); ?></p>
 						</div>
 					</div>
 				</div>

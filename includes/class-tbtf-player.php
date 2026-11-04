@@ -2,13 +2,17 @@
 /**
  * [tbt_fill] — the student game.
  *
- * The set is chosen by ?fill={slug}. Students must be logged in: the phrases
- * are rendered into the page only after that check, and there is no public
- * endpoint that returns them, so a link passed outside the class shows a
- * Log in button and nothing else.
+ * The set is chosen by ?fill={slug}. A published set is open to everyone,
+ * no login (the games come with the book); the tbtf_user_can_play filter is
+ * where a check can go later. There is still no endpoint that returns a set:
+ * the phrases only ever arrive inside this page.
  *
  * A draft is visible only to its owner (and administrators), with a banner
  * saying so. That is the teacher's preview before publishing.
+ *
+ * The page is served bare: our own minimal template replaces the theme's, so
+ * a phone shows the game and nothing else — no site header, menu, footer or
+ * admin bar. Only this plugin's own CSS and JS are printed.
  *
  * The tiles come from TBTF_Phrase here, in PHP. The player only compares
  * sequences; it never splits a phrase itself.
@@ -24,6 +28,30 @@ class TBTF_Player {
 		add_shortcode( self::SHORTCODE, array( $this, 'render' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue' ) );
 		add_action( 'template_redirect', array( $this, 'maybe_nocache' ) );
+		// Late, so it wins over a theme builder's own template swap (Divi).
+		add_filter( 'template_include', array( $this, 'bare_template' ), 1000 );
+	}
+
+	/**
+	 * Serve the student page with templates/player-page.php instead of the
+	 * theme's template.
+	 *
+	 * @param string $template Template the theme chose.
+	 * @return string
+	 */
+	public function bare_template( $template ) {
+		if ( ! $this->is_player_page() || post_password_required() ) {
+			return $template;
+		}
+		/**
+		 * Filter whether the student page is served without the theme.
+		 *
+		 * @param bool $bare True by default.
+		 */
+		if ( ! apply_filters( 'tbtf_bare_player_page', true ) ) {
+			return $template;
+		}
+		return TBTF_DIR . 'templates/player-page.php';
 	}
 
 	private function is_player_page() {
@@ -93,14 +121,16 @@ class TBTF_Player {
 	}
 
 	/**
-	 * Can this visitor play published sets? Logged in, by default.
-	 * Filterable so a membership check can be added without editing the plugin.
+	 * Can this visitor play published sets? Everyone, for now: the games are
+	 * for people who bought the book, and no login is required. Filterable so
+	 * a check (logged in, a book code, a membership) can be added later
+	 * without editing the plugin. $user_id is 0 for a visitor.
 	 *
 	 * @param object $set Set row.
 	 * @return bool
 	 */
 	private function can_play( $set ) {
-		return (bool) apply_filters( 'tbtf_user_can_play', is_user_logged_in(), $set, get_current_user_id() );
+		return (bool) apply_filters( 'tbtf_user_can_play', true, $set, get_current_user_id() );
 	}
 
 	/**
@@ -115,18 +145,8 @@ class TBTF_Player {
 
 		if ( '' === $slug ) {
 			return $this->message(
-				__( 'Fill', 'tbt-fill' ),
-				__( 'Open a game from the link or QR code your teacher shared.', 'tbt-fill' )
-			);
-		}
-
-		if ( ! is_user_logged_in() ) {
-			$here = add_query_arg( TBTF_Urls::SET_PARAM, $slug, get_permalink() );
-			return $this->message(
-				__( 'Log in to play', 'tbt-fill' ),
-				__( 'This game is for TBT students. Log in and it opens straight away.', 'tbt-fill' ),
-				wp_login_url( $here ),
-				__( 'Log in', 'tbt-fill' )
+				__( 'Choose a game', 'tbt-fill' ),
+				__( 'Open a game from its link or QR code in the book.', 'tbt-fill' )
 			);
 		}
 
@@ -139,14 +159,14 @@ class TBTF_Player {
 		if ( ! $available ) {
 			return $this->message(
 				__( 'This set isn\'t available', 'tbt-fill' ),
-				__( 'The link may be old, or your teacher hasn\'t published the set yet.', 'tbt-fill' )
+				__( 'The link may be old, or this game isn\'t published yet.', 'tbt-fill' )
 			);
 		}
 
 		if ( ! $is_owner && ! $this->can_play( $set ) ) {
 			return $this->message(
 				__( 'This set isn\'t available', 'tbt-fill' ),
-				__( 'Your account doesn\'t have access to this set. Ask your teacher.', 'tbt-fill' )
+				__( 'This game isn\'t open to you yet.', 'tbt-fill' )
 			);
 		}
 

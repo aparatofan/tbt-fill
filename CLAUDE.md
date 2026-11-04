@@ -25,7 +25,8 @@ Keep this file concise. It is loaded at the start of every Claude Code session.
 - The reveal and the audio use the original English; tiles are lowercase except `I` / `I'…`.
 - Timer constants (`PACE` in `player.js`) came from play-testing. Do not change them casually.
 - The creatures (`ART` in `player.js`) are signed off: no shape changes or pickups without Mariusz. Never name anything after Pac-Man.
-- There is no public read route. Students get set content only inside the server-rendered student page, after the login check.
+- Published sets are open to everyone, no login (the games come with the book). Access rules go in the `tbtf_user_can_play` filter, default `true`. There is still no read route: set content arrives only inside the server-rendered student page.
+- The student page is served bare by `templates/player-page.php` (no theme, no `wp_head()`/`wp_footer()`): only Fill's own CSS/JS. Keep it that way; filter `tbtf_bare_player_page` turns it off.
 - Drafts are visible to their owner and administrators only.
 - TBT Notes is optional. Never query Notes tables directly; use `TBTF_Classes`.
 - ElevenLabs: server-side only (`TBTF_Audio`). The key falls back to TBT Flashcards' `tbt_fc_elevenlabs_api_key` and its voice/model constants. Read them, never write them. The key never reaches the browser.
