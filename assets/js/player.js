@@ -402,10 +402,21 @@
 			raf = requestAnimationFrame( tick );
 		}
 
-		/* Every slot is as wide as the widest word of the round, distractors
-		   included, as it renders in a slot, plus 12px (min 88px). One width
-		   for all, so the width gives nothing away. */
+		/* All slots share one width, so the width gives nothing away: enough
+		   for the widest word of the round (distractors included) as it shows
+		   in a slot. The row should fit on one line: when it would not, the
+		   slots narrow to share the line and the slot text shrinks to match.
+		   Only if that text would drop below SLOT_FONT_MIN do they wrap. */
+		var SLOT_FONT = 17;
+		var SLOT_FONT_MIN = 13;
+		var SLOT_GAP = 8;
+		var SLOT_MIN_W = 64;
 		function sizeSlots() {
+			var box = el.slots;
+			box.classList.remove( 'is-wrap' );
+			box.style.removeProperty( '--tbtf-slot-font' );
+			box.style.removeProperty( '--tbtf-slot-pad' );
+
 			var probe = document.createElement( 'div' );
 			probe.className = 'tbtf-slot';
 			probe.style.cssText = 'position:absolute;visibility:hidden;width:auto;';
@@ -413,14 +424,39 @@
 			chip.className = 'tbtf-tile';
 			chip.style.width = 'auto';
 			probe.appendChild( chip );
-			el.slots.appendChild( probe );
+			box.appendChild( probe );
 			var maxW = 0;
+			var maxText = 0;
 			cur.tiles.forEach( function ( tile ) {
 				chip.textContent = tile.text;
 				maxW = Math.max( maxW, chip.offsetWidth );
+				maxText = Math.max( maxText, chip.scrollWidth );
 			} );
+			var frame = chip.offsetWidth - chip.clientWidth; // the tile's borders
 			probe.remove();
-			el.slots.style.setProperty( '--tbtf-slot-w', Math.max( 88, maxW + 12 ) + 'px' );
+
+			var n = cur.slots.length;
+			var line = box.parentNode.clientWidth;
+			var share = Math.floor( ( line - SLOT_GAP * ( n - 1 ) ) / n );
+			var want = maxW + 8;
+			var width = want;
+
+			if ( want <= share ) {
+				width = Math.min( Math.max( want, SLOT_MIN_W ), share );
+			} else {
+				// Narrow padding, then the font size the widest word needs.
+				var textRoom = share - 8 - frame - 4;
+				var textNow = maxText - 12; // scrollWidth includes 6px padding a side
+				var font = Math.floor( SLOT_FONT * textRoom / Math.max( 1, textNow ) );
+				if ( font >= SLOT_FONT_MIN ) {
+					width = share;
+					box.style.setProperty( '--tbtf-slot-font', Math.min( SLOT_FONT, font ) + 'px' );
+					box.style.setProperty( '--tbtf-slot-pad', '4px' );
+				} else {
+					box.classList.add( 'is-wrap' );
+				}
+			}
+			box.style.setProperty( '--tbtf-slot-w', width + 'px' );
 		}
 
 		/* Random spots with ≥ 12px between tiles and ≥ 6px from the edges
