@@ -100,29 +100,70 @@ class TBTF_Player {
 		wp_enqueue_style( 'tbtf-player', TBTF_URL . 'assets/css/player.css', array( 'tbtf-tokens' ), tbtf_asset_ver( 'assets/css/player.css' ) );
 		wp_enqueue_script( 'tbtf-player', TBTF_URL . 'assets/js/player.js', array(), tbtf_asset_ver( 'assets/js/player.js' ), true );
 
-		wp_localize_script(
-			'tbtf-player',
-			'tbtfPlayer',
-			array(
-				'i18n' => array(
-					/* translators: 1: current position, 2: queue length */
-					'progress'   => __( '%1$d / %2$d', 'tbt-fill' ),
-					'correct'    => __( 'Correct', 'tbt-fill' ),
-					'notQuite'   => __( 'Not quite · the answer is', 'tbt-fill' ),
-					'timeUp'     => __( 'Time\'s up · the answer is', 'tbt-fill' ),
-					/* translators: %s: a word on a tile */
-					'remove'     => __( 'Remove %s', 'tbt-fill' ),
-					/* translators: 1: phrases right first time, 2: total phrases */
-					'summary'    => __( '%1$d of %2$d phrases right on the first try.', 'tbt-fill' ),
-					'firstTry'   => __( 'First try', 'tbt-fill' ),
-					'secondTry'  => __( 'Second try', 'tbt-fill' ),
-					'missed'     => __( 'Missed', 'tbt-fill' ),
-					/* translators: %d: best score */
-					'best'       => __( 'Your best: %d', 'tbt-fill' ),
-					'newBest'    => __( 'New best!', 'tbt-fill' ),
-				),
-			)
+		wp_localize_script( 'tbtf-player', 'tbtfPlayer', self::script_data() );
+	}
+
+	/**
+	 * The settings and strings player.js reads as window.tbtfPlayer.
+	 *
+	 * @return array
+	 */
+	public static function script_data() {
+		return array(
+			'i18n' => array(
+				/* translators: 1: current position, 2: queue length */
+				'progress'   => __( '%1$d / %2$d', 'tbt-fill' ),
+				'correct'    => __( 'Correct', 'tbt-fill' ),
+				'notQuite'   => __( 'Not quite · the answer is', 'tbt-fill' ),
+				'timeUp'     => __( 'Time\'s up · the answer is', 'tbt-fill' ),
+				/* translators: %s: a word on a tile */
+				'remove'     => __( 'Remove %s', 'tbt-fill' ),
+				/* translators: 1: phrases right first time, 2: total phrases */
+				'summary'    => __( '%1$d of %2$d phrases right on the first try.', 'tbt-fill' ),
+				'firstTry'   => __( 'First try', 'tbt-fill' ),
+				'secondTry'  => __( 'Second try', 'tbt-fill' ),
+				'missed'     => __( 'Missed', 'tbt-fill' ),
+				/* translators: %d: best score */
+				'best'       => __( 'Your best: %d', 'tbt-fill' ),
+				'newBest'    => __( 'New best!', 'tbt-fill' ),
+			),
 		);
+	}
+
+	/**
+	 * The game's CSS (tokens + player) as one string, for printing inside
+	 * the bare page. Font URLs are made absolute, since the CSS no longer
+	 * sits in assets/css/.
+	 *
+	 * Inline on purpose: on the live site a cache in front of the server
+	 * kept serving old copies of the static CSS/JS files whatever their
+	 * ?ver=, while the page itself always arrived fresh. Inside the page,
+	 * the game's CSS and JS can only be as old as the page.
+	 *
+	 * @return string '' if a file cannot be read.
+	 */
+	public static function inline_css() {
+		$css = '';
+		foreach ( array( 'assets/css/tbt-tokens.css', 'assets/css/player.css' ) as $rel ) {
+			$part = is_readable( TBTF_DIR . $rel ) ? file_get_contents( TBTF_DIR . $rel ) : false;
+			if ( false === $part ) {
+				return '';
+			}
+			$css .= $part . "\n";
+		}
+		$css = str_replace( 'url( ../fonts/', 'url( ' . TBTF_URL . 'assets/fonts/', $css );
+		return str_ireplace( '</style', '<\\/style', $css );
+	}
+
+	/**
+	 * player.js as a string, for printing inside the bare page.
+	 *
+	 * @return string '' if the file cannot be read.
+	 */
+	public static function inline_js() {
+		$path = TBTF_DIR . 'assets/js/player.js';
+		$js   = is_readable( $path ) ? file_get_contents( $path ) : false;
+		return false === $js ? '' : str_ireplace( '</script', '<\\/script', $js );
 	}
 
 	/**
