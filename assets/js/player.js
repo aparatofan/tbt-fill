@@ -18,10 +18,12 @@
 	var t = cfg.i18n || {};
 
 	/* Seconds = base + perWord × answer tiles (distractors don't count).
-	   These came from play-testing and are deliberate. */
+	   These come from play-testing. Relaxed and Standard were lengthened
+	   after the first class test (students needed more time); the original
+	   prototype values were 5 + 1.5 and 4 + 1. Fast is unchanged. */
 	var PACE = {
-		relaxed: { base: 5, perWord: 1.5 },
-		standard: { base: 4, perWord: 1 },
+		relaxed: { base: 8, perWord: 2.5 },
+		standard: { base: 6, perWord: 1.8 },
 		fast: { base: 3, perWord: 0.7 }
 	};
 
@@ -131,6 +133,8 @@
 		}
 
 		ensureViewportFit();
+		// The app is a full-screen layer; the page behind it must not scroll.
+		document.documentElement.classList.add( 'tbtf-lock' );
 
 		var q = function ( role ) { return app.querySelector( '[data-role="' + role + '"]' ); };
 		var screens = {};
@@ -274,15 +278,8 @@
 			Object.keys( screens ).forEach( function ( k ) {
 				screens[ k ].hidden = k !== id;
 			} );
-			var playing = id === 'game';
-			app.classList.toggle( 'is-playing', playing );
-			document.documentElement.classList.toggle( 'tbtf-lock', playing );
-			if ( ! playing ) {
-				var top = app.getBoundingClientRect().top;
-				if ( top < 0 ) {
-					app.scrollIntoView( { block: 'start' } );
-				}
-			}
+			app.classList.toggle( 'is-playing', id === 'game' );
+			app.scrollTop = 0;
 		}
 
 		/* ---------- Chase ---------- */

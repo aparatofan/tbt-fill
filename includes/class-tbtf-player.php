@@ -177,19 +177,19 @@ class TBTF_Player {
 
 		$is_draft = TBTF_DB::STATUS_DRAFT === $set->status;
 
+		$banner = '';
+		if ( $is_draft ) {
+			$banner = esc_html__( 'Preview — this set is a draft. Only you can see it until you publish it.', 'tbt-fill' );
+			$edit   = TBTF_Urls::edit_url( (int) $set->id );
+			if ( '' !== $edit && (int) $set->owner_id === get_current_user_id() ) {
+				$banner .= ' <a href="' . esc_url( $edit ) . '">' . esc_html__( 'Back to editing', 'tbt-fill' ) . '</a>';
+			}
+		}
+
 		ob_start();
 		?>
 		<div class="tbt tbtf-player" data-role="player">
-			<?php if ( $is_draft ) : ?>
-				<div class="tbtf-preview-banner">
-					<?php esc_html_e( 'Preview — this set is a draft. Only you can see it until you publish it.', 'tbt-fill' ); ?>
-					<?php $edit = TBTF_Urls::edit_url( (int) $set->id ); ?>
-					<?php if ( '' !== $edit && (int) $set->owner_id === get_current_user_id() ) : ?>
-						<a href="<?php echo esc_url( $edit ); ?>"><?php esc_html_e( 'Back to editing', 'tbt-fill' ); ?></a>
-					<?php endif; ?>
-				</div>
-			<?php endif; ?>
-			<?php self::render_app( $data ); ?>
+			<?php self::render_app( $data, $banner ); ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -244,9 +244,10 @@ class TBTF_Player {
 	 * The game's markup: start, game, end and pause, as in the prototype.
 	 * player.js draws the tiles, slots, chase and results from the JSON.
 	 *
-	 * @param array $data Output of game_data().
+	 * @param array  $data   Output of game_data().
+	 * @param string $banner Draft-preview banner HTML (already escaped), or ''.
 	 */
-	public static function render_app( array $data ) {
+	public static function render_app( array $data, $banner = '' ) {
 		$has_audio = false;
 		foreach ( $data['items'] as $item ) {
 			if ( '' !== $item['audio'] ) {
@@ -259,6 +260,9 @@ class TBTF_Player {
 			. '<div class="tbtf-critter tbtf-chaser tbtf-c1" data-art="chaser" data-color="#660000"></div>';
 		?>
 		<div class="tbtf-app" data-role="app">
+			<?php if ( '' !== $banner ) : ?>
+				<div class="tbtf-preview-banner"><?php echo $banner; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above. ?></div>
+			<?php endif; ?>
 			<section class="tbtf-screen tbtf-screen--start" data-screen="start">
 				<div class="tbtf-intro">
 					<div>
