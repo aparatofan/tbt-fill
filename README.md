@@ -23,7 +23,9 @@ Both pages send no-cache headers and define `DONOTCACHEPAGE`.
 
 ## Student game
 
-Logged-in users only (filter `tbtf_user_can_play( $allowed, $set, $user_id )`). Logged-out visitors see a Log in button that returns to the game. Drafts open for their owner and administrators only, with a preview banner.
+Open to everyone, no login: the games are for people who bought the book. To restrict them later, use the filter `tbtf_user_can_play( $allowed, $set, $user_id )` (default `true`; `$user_id` is 0 for a visitor). Drafts open for their owner and administrators only, with a preview banner.
+
+The student page is served without the theme (`templates/player-page.php`): no site header, menu, footer or admin bar, and only Fill's own CSS and JS. The rest of the page's content is ignored; only the game is shown. To use the theme's template again, return `false` from the `tbtf_bare_player_page` filter.
 
 - Timer per phrase: `base + perWord × words` (Relaxed 5 + 1.5, Standard 4 + 1, Fast 3 + 0.7).
 - Correct: `10 + 2 × ceil(seconds left)`. Wrong or time out: −5 (floor 0), and the phrase comes back once at the end of the queue.
@@ -40,7 +42,7 @@ Logged-in users only (filter `tbtf_user_can_play( $allowed, $set, $user_id )`). 
 
 ## REST (`tbt-fill/v1`)
 
-All routes need `tbtf_manage`, a `wp_rest` nonce, and ownership of the set. There is no public read route.
+All routes need `tbtf_manage`, a `wp_rest` nonce, and ownership of the set. There is no public read route: a published set's phrases are only in the student page itself.
 
 | Route | Method | Purpose |
 | --- | --- | --- |
