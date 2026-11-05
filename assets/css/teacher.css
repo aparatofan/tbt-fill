@@ -291,7 +291,7 @@
 .tbtf-tile-chip--extra { color: var(--tbt-ink-soft); border-style: dashed; box-shadow: none; }
 .tbtf-tiles-empty { font-size: 14px; color: var(--tbt-ink-faint); }
 .tbt .tbtf-tiles-note { flex-basis: 100%; font-size: 14px; font-weight: 600; margin: 0 !important; }
-.tbtf-tiles-note--warn { color: var(--tbtf-warn); }
+.tbtf-tiles-note--info { color: var(--tbt-ink-soft); font-weight: 500; }
 .tbtf-tiles-note--error { color: var(--tbtf-bad); }
 .tbtf-audio { font-size: 12px; font-weight: 600; letter-spacing: .03em; padding: 2px 9px; border-radius: var(--tbt-r-pill); background-color: var(--tbt-blue-tint); color: var(--tbt-ink-soft); }
 .tbtf-audio--ready { background-color: var(--tbtf-sage-soft); color: var(--tbtf-sage-ink); }

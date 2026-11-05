@@ -6,7 +6,8 @@
  * tokenize() turns the English phrase exactly as it appears on the mind map
  * ("How's it going?") into the answer tiles the student must put in order
  * (how's · it · going). distractors() picks the extra words that make the
- * student know the phrase rather than just arrange a few words sensibly.
+ * student know a short phrase rather than just arrange a few words sensibly.
+ * Phrases over EXTRAS_MAX_TILES words get none: ordering them is the task.
  *
  * The player never re-tokenises: it receives these arrays inside the page and
  * only compares sequences by text. The reveal and the audio use the original
@@ -21,10 +22,10 @@ defined( 'ABSPATH' ) || exit;
 class TBTF_Phrase {
 
 	/** Most answer tiles one phrase may have. */
-	const MAX_TILES = 8;
+	const MAX_TILES = 12;
 
-	/** Above this many tiles the field gets crowded on a phone: warn. */
-	const WARN_TILES = 6;
+	/** Phrases longer than this get no distractors: they are hard enough to order without them. */
+	const EXTRAS_MAX_TILES = 6;
 
 	/** Most hand-picked distractors per phrase. */
 	const MAX_DISTRACTORS = 3;
@@ -139,7 +140,9 @@ class TBTF_Phrase {
 	 * branch: the unique tiles of the other items in the set, minus anything
 	 *         in this item's answer (case-insensitive), shuffled, first $count.
 	 *
-	 * A distractor never equals an answer tile.
+	 * A distractor never equals an answer tile. A phrase of more than
+	 * EXTRAS_MAX_TILES tiles gets none in either mode; its hand-picked words
+	 * stay stored and come back if the phrase is shortened.
 	 *
 	 * @param array $item  english, distractors (string or list).
 	 * @param array $set   distractor_mode, items (each with english).
@@ -149,6 +152,9 @@ class TBTF_Phrase {
 	public static function distractors( array $item, array $set, $count ) {
 		$count = max( 0, min( self::MAX_DISTRACTORS, (int) $count ) );
 		if ( 0 === $count ) {
+			return array();
+		}
+		if ( count( self::tokenize( $item['english'] ?? '' ) ) > self::EXTRAS_MAX_TILES ) {
 			return array();
 		}
 
@@ -190,7 +196,9 @@ class TBTF_Phrase {
 	 * Check one phrase's tile count.
 	 *
 	 * @param string[] $tiles Output of tokenize().
-	 * @return string 'ok', 'warn' (crowded), 'empty' or 'long'.
+	 * @return string 'empty'; 'ok'; 'no_extras' (playable, but over
+	 *                EXTRAS_MAX_TILES so it gets no distractors); 'long' (over
+	 *                MAX_TILES, cannot be saved).
 	 */
 	public static function tile_check( array $tiles ) {
 		$n = count( $tiles );
@@ -200,7 +208,7 @@ class TBTF_Phrase {
 		if ( $n > self::MAX_TILES ) {
 			return 'long';
 		}
-		return $n > self::WARN_TILES ? 'warn' : 'ok';
+		return $n > self::EXTRAS_MAX_TILES ? 'no_extras' : 'ok';
 	}
 
 	/**

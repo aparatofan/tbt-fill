@@ -2,7 +2,7 @@
  *
  * Ported from docs/fill-prototype.html, which is the reference for layout,
  * timing and animation. Layout: one-screen phone game. Slim top bar, open
- * tile field in the middle, timer + answer slots + Polish cue anchored in
+ * tile field in the middle, timer + answer line + Polish cue anchored in
  * the thumb zone.
  *
  * The start and end screens sit in the page like any TBT tool. While a round
@@ -163,7 +163,7 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 .tbt.tbtf-player .tbtf-tile.is-used { visibility: hidden; }
 @keyframes tbtf-pop { from { transform: scale(.85); } to { transform: scale(1); } }
 
-/* ---------- Bottom: timer, slots, cue ---------- */
+/* ---------- Bottom: timer, answer line, cue ---------- */
 .tbtf-bottom { display: flex; flex-direction: column; gap: 16px; }
 .tbtf-timer { display: flex; align-items: center; gap: 8px; }
 .tbtf-chase { position: relative; flex: 1; height: 60px; overflow: hidden; }
@@ -207,25 +207,23 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 @keyframes tbtf-puff { to { transform: translate(-12px, -6px) scale(1.9); opacity: 0; } }
 
 .tbtf-answer { min-height: 64px; display: flex; align-items: center; justify-content: center; }
-/* One row, always: a grid with one column per word (player.js sets the
-   columns). A grid never wraps; if the row is tight the columns narrow. */
-.tbtf-slots { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, var(--tbtf-slot-w, 88px)); justify-content: center; gap: var(--tbtf-slot-gap, 8px); width: 100%; }
-/* An empty slot is a rounded box; a placed word fills it. */
-.tbtf-slot {
-  min-width: 0; height: 50px; border-radius: 12px; display: flex; align-items: stretch; justify-content: center;
-  background: var(--tbtf-blue-soft); border: 1.5px dashed color-mix(in srgb, var(--tbtf-blue) 45%, transparent);
+/* Placed words line up in tap order on a faint baseline and wrap to a
+   second row when they need to. player.js reserves the line's height for
+   the round (--tbtf-line-h) and, on a very narrow screen, a smaller chip
+   font (--tbtf-line-font), so the bottom never grows mid-round. */
+.tbtf-line {
+  display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start;
+  gap: 8px; width: 100%; min-height: var(--tbtf-line-h, 50px);
+  border-bottom: 1px solid var(--tbtf-line); padding-bottom: 8px;
 }
-.tbtf-slot.is-filled { background: none; border-color: transparent; }
-.tbt.tbtf-player .tbtf-slot .tbtf-tile {
-  position: static; animation: none; width: 100%; min-width: 0; min-height: 0; margin: -1.5px; height: calc(100% + 3px);
-  justify-content: center; padding: 0 var(--tbtf-slot-pad, 6px); border-radius: 12px; overflow: hidden;
-  font-size: var(--tbtf-slot-font, 17px); box-shadow: 0 2px 0 var(--tbtf-line);
+.tbt.tbtf-player .tbtf-line .tbtf-tile {
+  position: static; animation: none; min-height: 0; height: 46px; justify-content: center;
+  padding: 0 12px; border-radius: 12px; font-size: var(--tbtf-line-font, 17px); box-shadow: 0 2px 0 var(--tbtf-line);
 }
-.tbtf-slots.is-good .tbtf-slot { border-color: var(--tbtf-good); }
-.tbt.tbtf-player .tbtf-slots.is-good .tbtf-tile { color: var(--tbtf-good); background: var(--tbtf-good-soft); border-color: var(--tbtf-good); box-shadow: none; }
-.tbtf-slots.is-bad .tbtf-slot { border-color: var(--tbtf-bad); }
-.tbt.tbtf-player .tbtf-slots.is-bad .tbtf-tile { color: var(--tbtf-bad); background: var(--tbtf-bad-soft); border-color: var(--tbtf-bad); box-shadow: none; }
-.tbtf-slots.is-bad { animation: tbtf-shake .4s; }
+.tbtf-line.is-good { border-bottom-color: var(--tbtf-good); }
+.tbt.tbtf-player .tbtf-line.is-good .tbtf-tile { color: var(--tbtf-good); background: var(--tbtf-good-soft); border-color: var(--tbtf-good); box-shadow: none; }
+.tbtf-line.is-bad { border-bottom-color: var(--tbtf-bad); animation: tbtf-shake .4s; }
+.tbt.tbtf-player .tbtf-line.is-bad .tbtf-tile { color: var(--tbtf-bad); background: var(--tbtf-bad-soft); border-color: var(--tbtf-bad); box-shadow: none; }
 @keyframes tbtf-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
 .tbtf-reveal { text-align: center; }
 .tbtf-reveal small { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
@@ -265,7 +263,6 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
    phones). Tiles stay at least 48px tall. */
 .tbt.tbtf-player .tbtf-app.is-compact .tbtf-field .tbtf-tile { padding: 0 14px; font-size: 19px; min-height: 48px; }
 .tbtf-app.is-compact .tbtf-bottom { gap: 10px; }
-.tbtf-app.is-compact .tbtf-slot { height: 46px; }
 .tbtf-app.is-compact .tbtf-answer { min-height: 50px; }
 .tbt .tbtf-app.is-compact .tbtf-cue { font-size: 20px !important; padding-top: 8px !important; }
 .tbtf-app.is-compact .tbtf-field { margin-block: 4px; }
@@ -273,6 +270,6 @@ html.tbtf-lock, html.tbtf-lock body { overflow: hidden !important; overscroll-be
 /* Reduced motion: creatures stand still and puffs are off; the strip still
    shrinks, so the timer still reads. */
 @media (prefers-reduced-motion: reduce) {
-  .tbt.tbtf-player .tbtf-tile, .tbtf-slots.is-bad, .tbtf-gain, .tbtf-critter svg, .tbtf-critter svg * { animation: none !important; }
+  .tbt.tbtf-player .tbtf-tile, .tbtf-line.is-bad, .tbtf-gain, .tbtf-critter svg, .tbtf-critter svg * { animation: none !important; }
   .tbtf-puff { display: none; }
 }

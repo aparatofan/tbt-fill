@@ -87,7 +87,7 @@ class TBTF_Teacher {
 				'nonce'          => wp_create_nonce( 'wp_rest' ),
 				'maxItems'       => TBTF_Rest::MAX_ITEMS,
 				'maxTiles'       => TBTF_Phrase::MAX_TILES,
-				'warnTiles'      => TBTF_Phrase::WARN_TILES,
+				'extrasMaxTiles' => TBTF_Phrase::EXTRAS_MAX_TILES,
 				'maxDistractors' => TBTF_Phrase::MAX_DISTRACTORS,
 				'audioEnabled'   => TBTF_Audio::enabled(),
 				'libraryUrl'     => TBTF_Urls::library_url(),
@@ -114,7 +114,7 @@ class TBTF_Teacher {
 			'tilesLabel'      => __( 'Tiles', 'tbt-fill' ),
 			'tilesEmpty'      => __( 'The tiles appear here as you type.', 'tbt-fill' ),
 			/* translators: %d: number of words */
-			'tilesWarn'       => __( '%d words — crowded on a phone.', 'tbt-fill' ),
+			'tilesNoExtras'   => __( '%d words — no extra words for phrases this long.', 'tbt-fill' ),
 			/* translators: %d: maximum number of words */
 			'tilesLong'       => __( 'Too long — keep it to %d words.', 'tbt-fill' ),
 			'fromBranch'      => __( 'no extra words: taken from the branch', 'tbt-fill' ),

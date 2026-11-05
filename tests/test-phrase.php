@@ -78,9 +78,9 @@ same( TBTF_Phrase::tokenize( 'Bye bye!' ), array( 'bye', 'bye' ), 'duplicate wor
 same( TBTF_Phrase::tile_check( array() ), 'empty', 'tile_check: empty' );
 same( TBTF_Phrase::tile_check( array( 'a' ) ), 'ok', 'tile_check: one tile is fine' );
 same( TBTF_Phrase::tile_check( array_fill( 0, 6, 'a' ) ), 'ok', 'tile_check: six is fine' );
-same( TBTF_Phrase::tile_check( array_fill( 0, 7, 'a' ) ), 'warn', 'tile_check: seven warns' );
-same( TBTF_Phrase::tile_check( array_fill( 0, 8, 'a' ) ), 'warn', 'tile_check: eight warns' );
-same( TBTF_Phrase::tile_check( array_fill( 0, 9, 'a' ) ), 'long', 'tile_check: nine is too long' );
+same( TBTF_Phrase::tile_check( array_fill( 0, 7, 'a' ) ), 'no_extras', 'tile_check: seven gets no extras' );
+same( TBTF_Phrase::tile_check( array_fill( 0, 12, 'a' ) ), 'no_extras', 'tile_check: twelve gets no extras' );
+same( TBTF_Phrase::tile_check( array_fill( 0, 13, 'a' ) ), 'long', 'tile_check: thirteen is too long' );
 
 /* ---------- parse_distractors ---------- */
 
@@ -163,6 +163,18 @@ same( TBTF_Phrase::distractors( $dup, $set, 3 ), array( 'seen' ), 'hand: distrac
 // One-item set in branch mode: nothing to draw from.
 $solo = array( 'distractor_mode' => 'branch', 'items' => array( array( 'english' => 'Likewise' ) ) );
 same( TBTF_Phrase::distractors( $solo['items'][0], $solo, 2 ), array(), 'branch: lone item has no distractors' );
+
+// Phrases over EXTRAS_MAX_TILES words get no distractors, in either mode.
+$six   = array( 'english' => 'Nice to see you so soon', 'distractors' => 'meet, your' );
+$seven = array( 'english' => 'Nice to see you again so soon', 'distractors' => 'meet, your' );
+$long  = array(
+	'distractor_mode' => 'hand',
+	'items'           => array( $six, $seven, array( 'english' => 'How are things going at work', 'distractors' => '' ) ),
+);
+same( TBTF_Phrase::distractors( $six, $long, 3 ), array( 'meet', 'your' ), 'hand: six words keep their hand-picked extras' );
+same( TBTF_Phrase::distractors( $seven, $long, 3 ), array(), 'hand: seven words get no extras' );
+$long_branch = array( 'distractor_mode' => 'branch' ) + $long;
+same( TBTF_Phrase::distractors( $seven, $long_branch, 3 ), array(), 'branch: seven words get no extras' );
 
 /* ---------- slug ---------- */
 

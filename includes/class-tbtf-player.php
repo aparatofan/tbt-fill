@@ -289,7 +289,7 @@ class TBTF_Player {
 
 	/**
 	 * The game's markup: start, game, end and pause, as in the prototype.
-	 * player.js draws the tiles, slots, chase and results from the JSON.
+	 * player.js draws the tiles, answer line, chase and results from the JSON.
 	 *
 	 * @param array  $data   Output of game_data().
 	 * @param string $banner Draft-preview banner HTML (already escaped), or ''.
@@ -379,7 +379,7 @@ class TBTF_Player {
 						<span class="tbtf-secs" data-role="secs"></span>
 					</div>
 					<div class="tbtf-answer">
-						<div class="tbtf-slots" data-role="slots"></div>
+						<div class="tbtf-line" data-role="line"></div>
 						<div class="tbtf-reveal" data-role="reveal" hidden aria-live="polite">
 							<small data-role="reveal-label"></small>
 							<span data-role="reveal-text" lang="en"></span>
