@@ -27,7 +27,7 @@ Open to everyone, no login: the games are for people who bought the book. To res
 
 The student page is served without the theme (`templates/player-page.php`): no site header, menu, footer or admin bar, and only Fill's own CSS and JS. The rest of the page's content is ignored; only the game is shown. To use the theme's template again, return `false` from the `tbtf_bare_player_page` filter.
 
-- Timer per phrase: `base + perWord × words` (Relaxed 8 + 2.5, Standard 6 + 1.8, Fast 3 + 0.7; Relaxed and Standard were lengthened after the first class test).
+- Timer per phrase: `base + perWord × words` (Relaxed 12 + 2.5, Standard 6 + 1.8, Fast 3 + 0.7; Relaxed and Standard were lengthened after the first class test, Relaxed again after a later one).
 - Correct: `10 + 2 × ceil(seconds left)`. Wrong or time out: −5 (floor 0), and the phrase comes back once at the end of the queue.
 - **Sound effects** (On/Off on the start screen, default On): a ding for each word placed in its right position, a low bonk for a word in the wrong position, a rising chime for a right phrase and two falling tones for a wrong one or time out. They are made in the browser with Web Audio, so there are no files. At the end of a round: fireworks (as in TBT Swipe; skipped for reduced motion) and a cheer, a clapping-and-hooray sound made once per site with ElevenLabs' sound-effects endpoint when a set is published. Without that file the game makes its own applause.
 - The pace, audio and sound-effects choices and the best score per set are kept in `localStorage`. Nothing about students is stored on the server.
@@ -67,6 +67,7 @@ php tests/test-phrase.php
 
 ## Changelog
 
+- **1.6.0**: Relaxed pace +4 s per phrase (12 + 2.5 per word). Student page checks whether its set has been saved since it loaded and reloads to the new version when the student returns to it or presses START.
 - **1.5.0**: Answer slots replaced by a wrapping answer line; phrases up to 12 words; phrases over 6 words get no extra words.
 
 ## Deploy

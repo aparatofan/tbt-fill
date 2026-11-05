@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TBT Fill
  * Description:       A mobile word-tile game for one branch of a HOW TO SAY IT IN ENGLISH mind map. Students read the Polish cue and tap the English words into place before the monsters catch up; audio models each phrase afterwards.
- * Version:           1.5.0
+ * Version:           1.6.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            TBT
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TBTF_VERSION', '1.5.0' );
+define( 'TBTF_VERSION', '1.6.0' );
 define( 'TBTF_DB_VERSION', '1.0' );
 define( 'TBTF_PLUGIN_FILE', __FILE__ );
 define( 'TBTF_DIR', plugin_dir_path( __FILE__ ) );

@@ -7,8 +7,10 @@
  * touching an existing set also requires ownership — administrators
  * included; wp-admin is the cross-user surface.
  *
- * There is deliberately no public read route. Students only ever receive a
- * set inside the server-rendered student page, after the login check.
+ * There is deliberately no public read route for set content. Students only
+ * ever receive a set inside the server-rendered student page. The one public
+ * route, /sets/{slug}/stamp, returns nothing but the set's last-saved time,
+ * so a student page left open on a phone can tell it is out of date.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -74,6 +76,18 @@ class TBTF_Rest {
 						'sanitize_callback' => 'absint',
 					),
 				),
+			)
+		);
+
+		// Public on purpose: the student page is public, and the answer is
+		// only a timestamp. GET, no state change, so no nonce.
+		register_rest_route(
+			self::NS,
+			'/sets/(?P<slug>[^/]+)/stamp',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'permission_callback' => '__return_true',
+				'callback'            => array( $this, 'stamp' ),
 			)
 		);
 	}
@@ -201,6 +215,36 @@ class TBTF_Rest {
 
 		$saved = TBTF_DB::get_set( $set_id );
 		return rest_ensure_response( self::set_payload( $saved, TBTF_DB::get_items( $set_id ) ) );
+	}
+
+	/**
+	 * When a set was last saved, for the student page's freshness check.
+	 * The slug is read as the student page reads ?fill=. Drafts answer too:
+	 * the REST request carries no nonce, so the owner's preview would
+	 * otherwise never learn of its own saves, and a timestamp gives nothing
+	 * away. No cache layer may keep the answer.
+	 */
+	public function stamp( WP_REST_Request $request ) {
+		$slug = sanitize_key( (string) $request['slug'] );
+		$set  = '' === $slug ? null : TBTF_DB::get_set_by_slug( $slug );
+		if ( ! $set ) {
+			$response = new WP_REST_Response(
+				array(
+					'code'    => 'tbtf_not_found',
+					'message' => __( 'No such set.', 'tbt-fill' ),
+				),
+				404
+			);
+		} else {
+			$response = new WP_REST_Response( array( 'stamp' => (string) $set->updated_at ) );
+		}
+		foreach ( wp_get_nocache_headers() as $name => $value ) {
+			if ( $value ) {
+				$response->header( $name, $value );
+			}
+		}
+		$response->header( 'X-LiteSpeed-Cache-Control', 'no-cache' );
+		return $response;
 	}
 
 	/**

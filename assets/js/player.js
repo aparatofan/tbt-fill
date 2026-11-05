@@ -20,9 +20,11 @@
 	/* Seconds = base + perWord × answer tiles (distractors don't count).
 	   These come from play-testing. Relaxed and Standard were lengthened
 	   after the first class test (students needed more time); the original
-	   prototype values were 5 + 1.5 and 4 + 1. Fast is unchanged. */
+	   prototype values were 5 + 1.5 and 4 + 1. Relaxed was lengthened again
+	   after a later class test (8 + 2.5 → 12 + 2.5, +4 s per phrase). Fast
+	   is unchanged. */
 	var PACE = {
-		relaxed: { base: 8, perWord: 2.5 },
+		relaxed: { base: 12, perWord: 2.5 },
 		standard: { base: 6, perWord: 1.8 },
 		fast: { base: 3, perWord: 0.7 }
 	};
@@ -683,7 +685,9 @@
 
 		/* ---------- Screens ---------- */
 
+		var screenNow = 'start';
 		function show( id ) {
+			screenNow = id;
 			Object.keys( screens ).forEach( function ( k ) {
 				screens[ k ].hidden = k !== id;
 			} );
@@ -1167,16 +1171,138 @@
 		} );
 		window.addEventListener( 'pagehide', pause );
 
+		/* ---------- Freshness: reload when the set was saved since ---------- */
+
+		/* A phone can keep this tab alive (or bring it back from the
+		   back/forward cache) for days without asking the server again, so
+		   the no-store headers alone never reach it. The page asks the public
+		   stamp route whether its set has been saved since it loaded. Any
+		   failure fails open: the game must never be blocked by the check. */
+		var FRESH_TIMEOUT = 1500;
+		var freshPending = null;
+		function freshKey() {
+			return 'tbtf-fresh-' + SET.slug;
+		}
+		function freshReload( stamp ) {
+			try {
+				if ( window.sessionStorage.getItem( freshKey() ) === stamp ) {
+					// Already reloaded for this save and still got the old
+					// page: something is caching it. Don't loop.
+					if ( window.console && console.warn ) {
+						console.warn( 'TBT Fill: the set has changed, but reloading still served the old page.' );
+					}
+					return false;
+				}
+				window.sessionStorage.setItem( freshKey(), stamp );
+			} catch ( e ) {}
+			var url;
+			try {
+				url = new URL( window.location.href );
+				url.searchParams.set( 'tbtf_v', stamp );
+				url = url.toString();
+			} catch ( e ) {
+				var href = window.location.href.replace( /#.*$/, '' );
+				href = href.replace( /([?&])tbtf_v=[^&]*(&|$)/, function ( m, pre, post ) { return post ? pre : ''; } );
+				url = href + ( href.indexOf( '?' ) === -1 ? '?' : '&' ) + 'tbtf_v=' + encodeURIComponent( stamp );
+			}
+			window.location.replace( url );
+			return true;
+		}
+		/* Resolves true when the page is current (or the check couldn't run),
+		   false when a reload has been started. */
+		function checkFresh() {
+			if ( freshPending ) {
+				return freshPending;
+			}
+			if ( ! window.fetch || ! window.Promise || ! SET.stamp || ! cfg.stampUrl || ! SET.slug ) {
+				return Promise.resolve( true );
+			}
+			// rest_url() carries ?rest_route= on sites without pretty permalinks.
+			var url = cfg.stampUrl + encodeURIComponent( SET.slug ) + '/stamp' +
+				( cfg.stampUrl.indexOf( '?' ) === -1 ? '?' : '&' ) + '_=' + Date.now();
+			freshPending = new Promise( function ( resolve ) {
+				var settled = false;
+				var finish = function ( ok ) {
+					if ( ! settled ) {
+						settled = true;
+						freshPending = null;
+						resolve( ok );
+					}
+				};
+				// A late answer after the timeout is ignored: by then the
+				// game may have started.
+				setTimeout( function () { finish( true ); }, FRESH_TIMEOUT );
+				window.fetch( url, { cache: 'no-store', credentials: 'same-origin' } )
+					.then( function ( res ) {
+						return res.ok ? res.json() : null;
+					} )
+					.then( function ( json ) {
+						if ( settled ) {
+							return;
+						}
+						if ( ! json || typeof json.stamp !== 'string' || json.stamp === SET.stamp ) {
+							finish( true );
+							return;
+						}
+						finish( ! freshReload( json.stamp ) );
+					} )
+					.catch( function () { finish( true ); } );
+			} );
+			return freshPending;
+		}
+		// Mid-game the check never runs: a returning phone stays paused, and
+		// the new version loads at the next START or Play again.
+		function checkFreshIdle() {
+			if ( screenNow === 'start' || screenNow === 'end' ) {
+				checkFresh();
+			}
+		}
+		document.addEventListener( 'visibilitychange', function () {
+			if ( ! document.hidden ) {
+				checkFreshIdle();
+			}
+		} );
+		window.addEventListener( 'pageshow', function ( e ) {
+			if ( e.persisted ) {
+				checkFreshIdle();
+			}
+		} );
+
+		// Taps while the check is in flight are ignored.
+		var starting = false;
+		function startWhenFresh( waitFonts ) {
+			starting = true;
+			checkFresh().then( function ( ok ) {
+				if ( ! ok ) {
+					return; // Reloading; leave starting set so nothing else runs.
+				}
+				var ready = waitFonts && document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+				return ready.then( function () {
+					starting = false;
+					startGame();
+				} );
+			} ).catch( function () {
+				starting = false;
+			} );
+		}
+
 		q( 'start' ).addEventListener( 'click', function () {
+			if ( starting ) {
+				return;
+			}
+			// Synchronous, inside the tap: iOS only unlocks audio here.
 			unlockAudio();
 			if ( Sfx.unlock() ) {
 				Sfx.loadCheer( SET.cheer );
 			}
-			( document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve() ).then( startGame );
+			startWhenFresh( true );
 		} );
 		q( 'again' ).addEventListener( 'click', function () {
+			if ( starting ) {
+				return;
+			}
 			Sfx.unlock();
-			startGame();
+			startWhenFresh( false );
 		} );
 		q( 'settings' ).addEventListener( 'click', function () { show( 'start' ); } );
 
