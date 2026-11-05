@@ -280,7 +280,7 @@ class TBTF_Rest {
 	 *
 	 * A row with neither English nor Polish is a blank the teacher added and
 	 * never filled, and is dropped silently. Otherwise both are required, the
-	 * English must make 1–8 tiles, and distractors are trimmed, deduplicated
+	 * English must make 1–12 tiles, and distractors are trimmed, deduplicated
 	 * and capped at three.
 	 *
 	 * @param mixed $raw Submitted items.

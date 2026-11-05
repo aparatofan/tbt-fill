@@ -378,7 +378,9 @@
 			} );
 			var mode = $( 'mode' ).value;
 			var count = parseInt( $( 'count' ).value, 10 ) || 0;
-			if ( item.tiles.length && count > 0 ) {
+			// Long phrases get no extra words in the game; the teacher's
+			// typed words stay in the field and return if it is shortened.
+			if ( item.tiles.length && count > 0 && item.check !== 'no_extras' ) {
 				if ( mode === 'hand' && item.hand.length ) {
 					item.hand.slice( 0, count ).forEach( function ( word ) {
 						d.tiles.appendChild( el( 'span', { className: 'tbtf-tile-chip tbtf-tile-chip--extra', lang: 'en', text: word } ) );
@@ -389,9 +391,9 @@
 			}
 			d.check.className = 'tbtf-tiles-note';
 			d.check.textContent = '';
-			if ( item.check === 'warn' ) {
-				d.check.textContent = fmt( t.tilesWarn, item.tiles.length );
-				d.check.className += ' tbtf-tiles-note--warn';
+			if ( item.check === 'no_extras' ) {
+				d.check.textContent = fmt( t.tilesNoExtras, item.tiles.length );
+				d.check.className += ' tbtf-tiles-note--info';
 			} else if ( item.check === 'long' ) {
 				d.check.textContent = fmt( t.tilesLong, cfg.maxTiles );
 				d.check.className += ' tbtf-tiles-note--error';

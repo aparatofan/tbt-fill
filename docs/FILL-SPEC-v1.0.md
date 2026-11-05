@@ -1,6 +1,12 @@
 # TBT Fill — Specification v1.0
 
-A mobile-first word-tile game for practising one branch of a HOW TO SAY IT IN ENGLISH mind map. The student sees a Polish cue, taps the floating English words into the slots to rebuild the phrase, and races a chase animation that doubles as the timer.
+A mobile-first word-tile game for practising one branch of a HOW TO SAY IT IN ENGLISH mind map. The student sees a Polish cue, taps the floating English words onto the answer line to rebuild the phrase, and races a chase animation that doubles as the timer.
+
+> **Changed in 1.5.0** (departs from `docs/fill-prototype.html`, which is left as it was):
+> - The equal-width answer slots are gone. Placed words line up on a plain answer line (a faint baseline) in tap order and wrap to a second row when they need to. The line's height is reserved at the start of each round so the field never shrinks mid-round.
+> - Phrases may have 1–12 words (was 1–8).
+> - Phrases of more than 6 words get no distractors, hand-picked or from the branch. Hand-picked words stay stored and are served again if the phrase is shortened. The builder shows a grey note instead of the old "crowded" warning.
+> - Unchanged: auto-check when the line holds as many words as the answer (no Check button), per-word ding/bonk against the answer word at that position, comparison by text, timer, scoring and creatures.
 
 - Repository: `aparatofan/tbt-fill` (currently empty)
 - Working prototype (approved look and mechanics): `docs/fill-prototype.html` — open it on a phone. **The prototype is the reference for behaviour, timing, layout and animation.** Where this spec and the prototype disagree, ask Mariusz.
@@ -14,9 +20,9 @@ Mariusz teaches one mind-map branch per class: audio and notes, students write a
 
 Design principles that came out of testing:
 
-- **Not too hard.** Equal-width slots show the word count but not word lengths. Tiles are lowercase so capitals give nothing away.
+- **Not too hard.** The round checks itself once the answer line holds as many words as the phrase, and each placed word dings or bonks, so the word count is never a mystery. Tiles are lowercase so capitals give nothing away.
 - **Tap, never drag.** Dragging on a phone under a timer causes misses that feel like the game's fault.
-- **Thumb zone.** Answer slots and the Polish cue sit at the bottom; tiles float in the middle.
+- **Thumb zone.** The answer line and the Polish cue sit at the bottom; tiles float in the middle.
 - **Audio models the phrase** after every item (correct or not).
 
 ---
@@ -102,7 +108,7 @@ Examples:
 | `How's it going?` | `how's · it · going` |
 | `Sorry, I didn't catch that.` | `sorry · I · didn't · catch · that` |
 | `What do you mean by…?` | `what · do · you · mean · by` |
-| `Likewise` | `likewise` (one slot, still playable with distractors) |
+| `Likewise` | `likewise` (one tile, still playable with distractors) |
 
 The reveal and the audio always use the original `english` string, so the capital letter and punctuation appear only on completion.
 
@@ -113,9 +119,10 @@ Answer check: the built sequence equals the tile array, compared by text. Duplic
 - `hand` mode: the item's own `distractors` (first `count`). If an item has none, fall back to `branch` for that item.
 - `branch` mode: the unique tiles of all other items in the set, minus any tile that appears in this item's answer (case-insensitive), shuffled, first `count`.
 - Never return a distractor equal to an answer tile.
+- A phrase of more than 6 tiles (`EXTRAS_MAX_TILES`) gets no distractors in either mode (since 1.5.0).
 - Known limitation, accepted for v1: a distractor set could occasionally form another valid phrase. Teachers fix it with hand-picked distractors.
 
-Validation on save: English and Polish required; the tile count must be 1–8 (warn above 6, it gets crowded on a phone); `distractors` trimmed, deduplicated, max 3.
+Validation on save: English and Polish required; the tile count must be 1–12 (above 6 the builder notes that the phrase gets no extra words; above 12 it cannot be saved); `distractors` trimmed, deduplicated, max 3.
 
 ---
 
@@ -144,7 +151,8 @@ Validation on save: English and Polish required; the tile count must be 1–8 (w
 │      you             it         │
 │                                 │
 │  🟥🟪🟩 ═══════════ 🟢       7  │  chase = timer
-│  ______   ______   ______       │  equal-width slots
+│  how's  it                      │  answer line (tap order)
+│  ______________________________ │  faint baseline, wraps
 │ ─────────────────────────────── │
 │       Jak leci? Jak tam?        │  Polish cue
 └─────────────────────────────────┘
@@ -163,10 +171,10 @@ Validation on save: English and Polish required; the tile count must be 1–8 (w
 1. The queue is the set's items, shuffled.
 2. For each item, build tiles = answer tiles + distractors, shuffled, rendered as buttons scattered in the field.
 3. The clock starts when the tiles appear.
-4. Tap a field tile → it moves into the **first empty** slot and its field position stays reserved (invisible). Tap a word in a slot → it returns to its field position.
-5. When the last slot fills, check immediately (no Check button).
-6. **Correct**: slots turn sage, then the reveal shows the full original phrase in sage with the label *Correct*; audio plays; score += `10 + 2 × ceil(seconds left)`; next item after ~1.7 s.
-7. **Wrong**: slots shake and turn red; the reveal shows *Not quite · the answer is* + the phrase; audio plays; score −5 (floor 0); next item after ~2.4 s.
+4. Tap a field tile → it is added to the end of the answer line and its field position stays reserved (invisible). Each placed word dings if it matches the answer word at that position, bonks if not. Tap a word on the line → it returns to its field position and the words after it close up.
+5. When the line holds as many words as the answer, check immediately (no Check button).
+6. **Correct**: the line turns sage, then the reveal shows the full original phrase in sage with the label *Correct*; audio plays; score += `10 + 2 × ceil(seconds left)`; next item after ~1.7 s.
+7. **Wrong**: the line shakes and turns red; the reveal shows *Not quite · the answer is* + the phrase; audio plays; score −5 (floor 0); next item after ~2.4 s.
 8. **Timeout**: as wrong, label *Time's up · the answer is*.
 9. A wrong or timed-out item is appended to the end of the queue **once**. A second miss marks it *Missed*. A correct answer after a retry marks it *Second try*.
 10. Progress shows `position / current queue length`, so it grows when an item is requeued.
@@ -190,13 +198,13 @@ These numbers came from play-testing and are deliberate. Keep them in one consta
 - Max content width ~520 px, centred on tablets/desktop (it also works screen-shared).
 - **Tiles**: rounded buttons with a light fill, 1.5 px border and a small bottom shadow so they look pressable; ≥ 48 px tall, padding ~20 px, ~21 px text; pressed state sinks 3 px. Lowercase text.
 - **Placement**: random positions inside the field with ≥ 12 px clearance between tiles and ≥ 6 px from the field edges (rejection sampling, ~400 tries per tile). If any tile can't be placed, fall back to centred wrapped rows. Re-layout unplaced tiles on resize/orientation change. Tiles never move during play.
-- **Slots**: all the same width = widest tile in this round, distractors included, + 12 px (minimum 88 px), so the width reveals nothing. A 3 px underline; wrap to a second row if needed.
-- **Reveal** replaces the slots row; it uses the original English.
+- **Answer line**: placed words as chips (46 px tall, ~17 px text) centred on a faint 1 px baseline, wrapping to a second row when needed. Its height is reserved at the start of each round for the widest words of the round on one or two rows; if they would need three rows the chip text shrinks (down to 11 px) to fit two. Re-measured on resize/orientation change.
+- **Reveal** replaces the answer line; it uses the original English.
 - Polish cue: ~22 px, semi-bold, ink colour, a hairline above it.
 
 ### 6.5 Visual identity
 
-- Primary: TBT blue (`--tbt-blue` from tokens; Mariusz's brand value is `#0859C6`). Tiles' text, slot underlines, score, primary buttons.
+- Primary: TBT blue (`--tbt-blue` from tokens; Mariusz's brand value is `#0859C6`). Tiles' text, score, primary buttons.
 - Secondary: **HOW TO sage `#6B9E78`** (add tokens `--tbtf-sage #6B9E78`, `--tbtf-sage-ink #3E6D4B`, `--tbtf-sage-soft #E3EFE6`). Used for success states, eyebrow labels, positive score pops, and the hero.
 - Error: a coral red for wrong/time-low states.
 - Monster colours are the three TBT category colours, exact values:
@@ -210,7 +218,7 @@ These numbers came from play-testing and are deliberate. Keep them in one consta
 
 Lift the SVG art and the geometry from the prototype (`ART.chaser`, `ART.hero`, `chaseGeom`, `setChase`, the `.chase` CSS block). Summary:
 
-- A strip ~60 px high above the slots, `overflow: hidden`, with a thin ground line.
+- A strip ~60 px high above the answer line, `overflow: hidden`, with a thin ground line.
 - **Hero**: a round sage creature with little feet, running right, glancing back over its shoulder; small dust puffs behind it every ~160 ms.
 - **Monsters**: three larger round creatures with small horns, angry brows and snapping jagged jaws, in the three category colours, stomping right in a pack (lead, then two followers ~36 px apart).
 - **Geometry**: both move right. The hero starts halfway along the track and the pack at the left. The lead monster is faster and reaches the hero exactly when time runs out. The **blue strip of ground between the lead monster and the hero is the time left**. It turns red, the hero speeds up and starts to sweat when < 30% of the time remains.

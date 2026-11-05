@@ -229,12 +229,12 @@
 			} catch ( e ) {}
 		},
 
-		/** A word in the right slot: a light rising ding. */
+		/** A word right for its position: a light rising ding. */
 		fx_good: function () {
 			this.tone( 880, 0, 0.13, 'sine', 0.32 );
 			this.tone( 1320, 0.055, 0.16, 'sine', 0.24 );
 		},
-		/** A word in the wrong slot: a soft low bonk. */
+		/** A word wrong for its position: a soft low bonk. */
 		fx_bad: function () {
 			this.tone( 220, 0, 0.2, 'triangle', 0.42, 140 );
 		},
@@ -543,7 +543,7 @@
 
 		var el = {
 			field: q( 'field' ),
-			slots: q( 'slots' ),
+			line: q( 'line' ),
 			reveal: q( 'reveal' ),
 			revealLabel: q( 'reveal-label' ),
 			revealText: q( 'reveal-text' ),
@@ -774,13 +774,13 @@
 			var all = shuffle( answer.concat( item.distractors || [] ) ).map( function ( text, i ) {
 				return { id: i, text: text };
 			} );
-			cur = { idx: idx, item: item, answer: answer, tiles: all, slots: answer.map( function () { return null; } ), locked: false };
+			cur = { idx: idx, item: item, answer: answer, tiles: all, placed: [], locked: false };
 
 			el.progress.textContent = fmt( t.progress, G.pos + 1, G.queue.length );
 			el.cue.textContent = item.pl;
 			el.reveal.hidden = true;
-			el.slots.hidden = false;
-			el.slots.className = 'tbtf-slots';
+			el.line.hidden = false;
+			el.line.className = 'tbtf-line';
 
 			el.field.innerHTML = '';
 			all.forEach( function ( tile ) {
@@ -794,13 +794,13 @@
 				tile.el = b;
 			} );
 			app.classList.remove( 'is-compact' );
-			renderSlots();
-			sizeSlots();
+			renderLine();
+			sizeLine();
 			// Too crowded for full-size tiles on this screen (a long phrase on a
 			// small phone): use the compact size, still at least 48px tall.
 			if ( ! layoutTiles() ) {
 				app.classList.add( 'is-compact' );
-				sizeSlots();
+				sizeLine();
 				layoutTiles();
 			}
 			preload( item );
@@ -814,62 +814,56 @@
 			raf = requestAnimationFrame( tick );
 		}
 
-		/* All slots share one width, so the width gives nothing away: enough
-		   for the widest word of the round (distractors included) as it shows
-		   in a slot. The slots are a one-row grid that cannot wrap: when the
-		   row is tight the slots share the line and the slot text shrinks to
-		   match, down to SLOT_FONT_MIN. */
-		var SLOT_FONT = 17;
-		var SLOT_FONT_MIN = 11;
-		var SLOT_GAP = 8;
-		var SLOT_GAP_TIGHT = 4;
-		var SLOT_MIN_W = 64;
-		function sizeSlots() {
-			var box = el.slots;
-			box.style.removeProperty( '--tbtf-slot-font' );
-			box.style.removeProperty( '--tbtf-slot-pad' );
-			box.style.removeProperty( '--tbtf-slot-gap' );
+		/* The answer line keeps one height for the whole round, so the bottom
+		   never grows and the field never shrinks under the tiles. It
+		   reserves room for as many chips as the answer has words, measured on
+		   the widest tiles of the round (an extra word may be placed in place
+		   of a right one), on one or two rows. If they need three rows (a long
+		   phrase on a small phone), the chip text shrinks step by step down to
+		   LINE_FONT_MIN to fit two; failing that, the line reserves what the
+		   words need at the smallest size. */
+		var LINE_FONT = 17;
+		var LINE_FONT_MIN = 11;
+		function sizeLine() {
+			var box = el.line;
+			box.style.removeProperty( '--tbtf-line-h' );
+			box.style.removeProperty( '--tbtf-line-font' );
 
 			var probe = document.createElement( 'div' );
-			probe.className = 'tbtf-slot';
-			probe.style.cssText = 'position:absolute;visibility:hidden;width:auto;';
-			var chip = document.createElement( 'span' );
-			chip.className = 'tbtf-tile';
-			chip.style.width = 'auto';
-			probe.appendChild( chip );
-			box.appendChild( probe );
-			var maxW = 0;
-			var maxText = 0;
-			cur.tiles.forEach( function ( tile ) {
+			probe.className = 'tbtf-line';
+			probe.style.cssText = 'position:absolute;left:0;top:0;visibility:hidden;min-height:0;width:' + box.clientWidth + 'px;';
+			var chips = cur.tiles.map( function ( tile ) {
+				var chip = document.createElement( 'span' );
+				chip.className = 'tbtf-tile';
 				chip.textContent = tile.text;
-				maxW = Math.max( maxW, chip.offsetWidth );
-				maxText = Math.max( maxText, chip.scrollWidth );
+				probe.appendChild( chip );
+				return chip;
 			} );
-			var frame = chip.offsetWidth - chip.clientWidth; // the tile's borders
-			probe.remove();
+			box.parentNode.appendChild( probe );
+			chips.map( function ( chip ) { return { chip: chip, w: chip.offsetWidth }; } )
+				.sort( function ( a, b ) { return b.w - a.w; } )
+				.slice( cur.answer.length )
+				.forEach( function ( c ) { c.chip.remove(); } );
 
-			var n = cur.slots.length;
-			var line = box.parentNode.clientWidth;
-			var share = Math.floor( ( line - SLOT_GAP * ( n - 1 ) ) / n );
-			var want = maxW + 8;
-			var width = want;
-
-			if ( want <= share ) {
-				width = Math.min( Math.max( want, SLOT_MIN_W ), share );
-			} else {
-				// Tight row: smaller gaps and padding, then the font size the
-				// widest word needs.
-				share = Math.floor( ( line - SLOT_GAP_TIGHT * ( n - 1 ) ) / n );
-				box.style.setProperty( '--tbtf-slot-gap', SLOT_GAP_TIGHT + 'px' );
-				var textRoom = share - 4 - frame - 2;
-				var textNow = maxText - 12; // scrollWidth includes 6px padding a side
-				var font = Math.floor( SLOT_FONT * textRoom / Math.max( 1, textNow ) );
-				width = Math.max( 1, share );
-				box.style.setProperty( '--tbtf-slot-font', Math.max( SLOT_FONT_MIN, Math.min( SLOT_FONT, font ) ) + 'px' );
-				box.style.setProperty( '--tbtf-slot-pad', '2px' );
+			function rows() {
+				var tops = [];
+				Array.prototype.forEach.call( probe.children, function ( chip ) {
+					if ( tops.indexOf( chip.offsetTop ) === -1 ) {
+						tops.push( chip.offsetTop );
+					}
+				} );
+				return tops.length;
 			}
-			box.style.setProperty( '--tbtf-slot-w', width + 'px' );
-			box.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0, ' + width + 'px))';
+			var font = LINE_FONT;
+			while ( rows() > 2 && font > LINE_FONT_MIN ) {
+				font--;
+				probe.style.setProperty( '--tbtf-line-font', font + 'px' );
+			}
+			if ( font < LINE_FONT ) {
+				box.style.setProperty( '--tbtf-line-font', font + 'px' );
+			}
+			box.style.setProperty( '--tbtf-line-h', probe.offsetHeight + 'px' );
+			probe.remove();
 		}
 
 		/* Random spots with ≥ 12px between tiles and ≥ 6px from the edges
@@ -949,43 +943,40 @@
 			return fits;
 		}
 
-		function renderSlots() {
-			el.slots.innerHTML = '';
-			cur.slots.forEach( function ( id, k ) {
-				var s = document.createElement( 'div' );
-				s.className = id === null ? 'tbtf-slot' : 'tbtf-slot is-filled';
-				if ( id !== null ) {
-					var chip = document.createElement( 'button' );
-					chip.type = 'button';
-					chip.className = 'tbtf-tile';
-					chip.textContent = cur.tiles[ id ].text;
-					chip.setAttribute( 'lang', 'en' );
-					chip.setAttribute( 'aria-label', fmt( t.remove, cur.tiles[ id ].text ) );
-					chip.addEventListener( 'click', function () { unplace( k ); } );
-					s.appendChild( chip );
-				}
-				el.slots.appendChild( s );
+		/* Placed words in tap order. A tap on one sends it back to its own
+		   spot in the field; the words after it close up. */
+		function renderLine() {
+			el.line.innerHTML = '';
+			cur.placed.forEach( function ( id, k ) {
+				var chip = document.createElement( 'button' );
+				chip.type = 'button';
+				chip.className = 'tbtf-tile';
+				chip.textContent = cur.tiles[ id ].text;
+				chip.setAttribute( 'lang', 'en' );
+				chip.setAttribute( 'aria-label', fmt( t.remove, cur.tiles[ id ].text ) );
+				chip.addEventListener( 'click', function () { unplace( k ); } );
+				el.line.appendChild( chip );
 			} );
 			cur.tiles.forEach( function ( tile ) {
-				tile.el.classList.toggle( 'is-used', cur.slots.indexOf( tile.id ) !== -1 );
+				tile.el.classList.toggle( 'is-used', cur.placed.indexOf( tile.id ) !== -1 );
 			} );
 		}
 
 		function place( id ) {
-			if ( ! cur || cur.locked || ! cur.timer.running || cur.slots.indexOf( id ) !== -1 ) {
+			if ( ! cur || cur.locked || ! cur.timer.running || cur.placed.indexOf( id ) !== -1 ) {
 				return;
 			}
-			var k = cur.slots.indexOf( null );
-			if ( k < 0 ) {
+			// A full line is being checked.
+			if ( cur.placed.length >= cur.answer.length ) {
 				return;
 			}
-			cur.slots[ k ] = id;
-			renderSlots();
-			if ( cur.slots.indexOf( null ) === -1 ) {
+			cur.placed.push( id );
+			renderLine();
+			if ( cur.placed.length === cur.answer.length ) {
 				check();
 			} else {
-				// Each word as it is placed: right slot or not.
-				sfx( cur.tiles[ id ].text === cur.answer[ k ] ? 'good' : 'bad' );
+				// Each word as it is placed: the right word for its position or not.
+				sfx( cur.tiles[ id ].text === cur.answer[ cur.placed.length - 1 ] ? 'good' : 'bad' );
 			}
 		}
 
@@ -993,13 +984,13 @@
 			if ( ! cur || cur.locked || ! cur.timer.running ) {
 				return;
 			}
-			cur.slots[ k ] = null;
-			renderSlots();
+			cur.placed.splice( k, 1 );
+			renderLine();
 		}
 
 		/* Compared by text, so duplicate words in a phrase are fine. */
 		function check() {
-			var right = cur.slots.every( function ( id, i ) {
+			var right = cur.placed.every( function ( id, i ) {
 				return cur.tiles[ id ].text === cur.answer[ i ];
 			} );
 			if ( right ) {
@@ -1040,7 +1031,7 @@
 		}
 
 		function reveal( label, cls ) {
-			el.slots.hidden = true;
+			el.line.hidden = true;
 			el.reveal.hidden = false;
 			el.reveal.className = 'tbtf-reveal ' + cls;
 			el.revealLabel.textContent = label;
@@ -1053,7 +1044,7 @@
 			cancelAnimationFrame( raf );
 			addScore( SCORE_BASE + Math.ceil( cur.timer.left ) * SCORE_PER_SECOND );
 			G.result[ cur.idx ] = G.retried[ cur.idx ] ? 'retry' : 'first';
-			el.slots.classList.add( 'is-good' );
+			el.line.classList.add( 'is-good' );
 			chasers.forEach( function ( c ) { c.classList.add( 'is-stunned' ); } );
 			el.gap.classList.add( 'is-gone' );
 			hero.className = 'tbtf-critter tbtf-hero is-escape';
@@ -1086,7 +1077,7 @@
 				G.result[ cur.idx ] = 'missed';
 			}
 			if ( reason === 'wrong' ) {
-				el.slots.classList.add( 'is-bad' );
+				el.line.classList.add( 'is-bad' );
 			}
 			var item = cur.item;
 			sfx( 'lose' );
@@ -1194,6 +1185,9 @@
 			clearTimeout( resizeTimer );
 			resizeTimer = setTimeout( function () {
 				if ( cur && ! cur.locked ) {
+					// A rotation changes the line's width: re-reserve its
+					// height before the field is laid out again.
+					sizeLine();
 					layoutTiles();
 					if ( cur.timer ) {
 						setChase( Math.max( 0, cur.timer.left / cur.timer.total ) );

@@ -1,6 +1,6 @@
 # TBT Fill
 
-A mobile-first word-tile game for practising one branch of a HOW TO SAY IT IN ENGLISH mind map. The student sees a Polish cue, taps the scattered English words into the slots to rebuild the phrase, and races a chase animation that doubles as the timer. Audio models every phrase afterwards.
+A mobile-first word-tile game for practising one branch of a HOW TO SAY IT IN ENGLISH mind map. The student sees a Polish cue, taps the scattered English words onto the answer line to rebuild the phrase, and races a chase animation that doubles as the timer. Audio models every phrase afterwards.
 
 Spec: [`docs/FILL-SPEC-v1.0.md`](docs/FILL-SPEC-v1.0.md). Approved prototype: [`docs/fill-prototype.html`](docs/fill-prototype.html).
 
@@ -29,9 +29,10 @@ The student page is served without the theme (`templates/player-page.php`): no s
 
 - Timer per phrase: `base + perWord × words` (Relaxed 8 + 2.5, Standard 6 + 1.8, Fast 3 + 0.7; Relaxed and Standard were lengthened after the first class test).
 - Correct: `10 + 2 × ceil(seconds left)`. Wrong or time out: −5 (floor 0), and the phrase comes back once at the end of the queue.
-- **Sound effects** (On/Off on the start screen, default On): a ding for each word placed in its right slot, a low bonk for a wrong slot, a rising chime for a right phrase and two falling tones for a wrong one or time out. They are made in the browser with Web Audio, so there are no files. At the end of a round: fireworks (as in TBT Swipe; skipped for reduced motion) and a cheer, a clapping-and-hooray sound made once per site with ElevenLabs' sound-effects endpoint when a set is published. Without that file the game makes its own applause.
+- **Sound effects** (On/Off on the start screen, default On): a ding for each word placed in its right position, a low bonk for a word in the wrong position, a rising chime for a right phrase and two falling tones for a wrong one or time out. They are made in the browser with Web Audio, so there are no files. At the end of a round: fireworks (as in TBT Swipe; skipped for reduced motion) and a cheer, a clapping-and-hooray sound made once per site with ElevenLabs' sound-effects endpoint when a set is published. Without that file the game makes its own applause.
 - The pace, audio and sound-effects choices and the best score per set are kept in `localStorage`. Nothing about students is stored on the server.
 - The game is always a fixed full-screen layer (100dvh, safe areas honoured), so no page margin shows and nothing scrolls during play. It follows the phone's light or dark setting. Long phrases on small phones switch to a compact tile size (still at least 48px tall).
+- Phrases are 1–12 words. Placed words line up on a wrapping answer line in tap order. Phrases over 6 words get no extra words (hand-picked ones stay saved and return if the phrase is shortened).
 
 ## Phrase → tiles
 
@@ -63,6 +64,10 @@ All routes need `tbtf_manage`, a `wp_rest` nonce, and ownership of the set. Ther
 ```bash
 php tests/test-phrase.php
 ```
+
+## Changelog
+
+- **1.5.0**: Answer slots replaced by a wrapping answer line; phrases up to 12 words; phrases over 6 words get no extra words.
 
 ## Deploy
 
