@@ -110,7 +110,9 @@ class TBTF_Player {
 	 */
 	public static function script_data() {
 		return array(
-			'i18n' => array(
+			// player.js appends {slug}/stamp; see TBTF_Rest::stamp().
+			'stampUrl' => esc_url_raw( rest_url( TBTF_Rest::NS . '/sets/' ) ),
+			'i18n'     => array(
 				/* translators: 1: current position, 2: queue length */
 				'progress'   => __( '%1$d / %2$d', 'tbt-fill' ),
 				'correct'    => __( 'Correct', 'tbt-fill' ),
@@ -284,6 +286,8 @@ class TBTF_Player {
 			'pace'  => in_array( $set->pace_default, TBTF_DB::PACES, true ) ? (string) $set->pace_default : 'standard',
 			'items' => $out,
 			'cheer' => TBTF_Audio::cheer_url(),
+			// player.js compares this with the stamp route to notice a save.
+			'stamp' => (string) $set->updated_at,
 		);
 	}
 
