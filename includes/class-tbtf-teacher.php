@@ -163,6 +163,21 @@ class TBTF_Teacher {
 			'stateDraft'      => __( 'Draft — students cannot open it yet.', 'tbt-fill' ),
 			'stateLive'       => __( 'Published — students with the link can play.', 'tbt-fill' ),
 			'stateNew'        => __( 'Not saved yet.', 'tbt-fill' ),
+			// Library filter.
+			'itemOne'         => __( 'set', 'tbt-fill' ),
+			'itemMany'        => __( 'sets', 'tbt-fill' ),
+			/* translators: 1: sets shown, 2: sets in the group, 3: "set" or "sets" */
+			'filterOf'        => __( '%1$d of %2$d %3$s', 'tbt-fill' ),
+			/* translators: 1: number of sets, 2: "set" or "sets" */
+			'filterAll'       => __( '%1$d %2$s', 'tbt-fill' ),
+			/* translators: 1: sets shown, 2: sets in the library, 3: "set" or "sets" */
+			'filterShowing'   => __( 'Showing %1$d of %2$d %3$s', 'tbt-fill' ),
+			/* translators: 1: class or group name, 2: number of sets */
+			'optionLabel'     => __( '%1$s (%2$d)', 'tbt-fill' ),
+			/* translators: %1$s: the matching phrase */
+			'hitQuote'        => __( '“%1$s”', 'tbt-fill' ),
+			/* translators: %1$d: number of other matching phrases */
+			'hitMore'         => __( '+%1$d more', 'tbt-fill' ),
 			'confirmDeleteYes' => __( 'Delete', 'tbt-fill' ),
 			'cancel'          => __( 'Cancel', 'tbt-fill' ),
 		);
@@ -252,31 +267,75 @@ class TBTF_Teacher {
 
 	/**
 	 * The library: drafts first, then each class, then sets with no class.
+	 *
+	 * The Admin Bar (title ─ search ─ class ─ button) is the one Swipe uses.
+	 * Filtering runs in the browser over the rows below: the library has no
+	 * pagination, so every set the teacher owns is already on the page,
+	 * together with the text of its phrases for the content search.
 	 */
 	private function render_library() {
-		$sets   = TBTF_DB::sets_for_owner( get_current_user_id() );
-		$groups = array();
-		$drafts = array();
-		$loose  = array();
+		$user_id = get_current_user_id();
+		$sets    = TBTF_DB::sets_for_owner( $user_id );
+		$groups  = $this->group_sets( $sets );
 
-		foreach ( $sets as $set ) {
-			if ( TBTF_DB::STATUS_DRAFT === $set->status ) {
-				$drafts[] = $set;
-			} elseif ( $set->class_id && TBTF_Classes::available() ) {
-				$groups[ (int) $set->class_id ][] = $set;
-			} else {
-				$loose[] = $set;
+		// One query for every phrase in the library, grouped by set.
+		$texts = array();
+		if ( $sets ) {
+			foreach ( TBTF_DB::item_texts_for_owner( $user_id ) as $item ) {
+				$texts[ (int) $item->parent_id ][] = array(
+					trim( (string) $item->english ),
+					trim( (string) $item->polish ),
+				);
 			}
 		}
 
-		$player_ready = '' !== TBTF_Urls::player_page();
+		// The filter is only rendered over a library that has something in it.
+		$has_items      = ! empty( $sets );
+		$filter_options = $has_items ? $this->filter_options( $groups ) : array();
+		$player_ready   = '' !== TBTF_Urls::player_page();
 		?>
 		<div class="tbtf-library" data-role="library">
-			<div class="tbtf-library-head">
-				<h2 class="tbtf-section-title"><?php esc_html_e( 'Your sets', 'tbt-fill' ); ?></h2>
-				<span class="tbtf-library-line" aria-hidden="true"></span>
-				<a class="tbtf-btn tbtf-btn--primary" href="<?php echo esc_url( TBTF_Urls::new_url() ); ?>"><?php esc_html_e( 'Create a set', 'tbt-fill' ); ?></a>
+			<div class="tbtf-library-head<?php echo $has_items ? ' tbtf-library-head--filter' : ''; ?>" data-role="library-head">
+				<div class="tbtf-section-head">
+					<h2 class="tbtf-section-title"><?php esc_html_e( 'Your sets', 'tbt-fill' ); ?></h2>
+					<?php // Joins the title to the next item; with no sets it runs to the button. ?>
+					<span class="tbtf-library-line" aria-hidden="true"></span>
+				</div>
+				<?php if ( $has_items ) : ?>
+					<div class="tbtf-filter" role="search" data-role="filter">
+						<div class="tbtf-filter-search">
+							<label class="tbtf-sr" for="tbtf-filter-q"><?php esc_html_e( 'Search sets', 'tbt-fill' ); ?></label>
+							<svg class="tbtf-filter-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+								<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2.2"/>
+								<path d="m20 20-3.6-3.6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+							</svg>
+							<input type="search" id="tbtf-filter-q" class="tbtf-input" data-role="filter-q"
+								placeholder="<?php esc_attr_e( 'Search sets and phrases', 'tbt-fill' ); ?>"
+								autocomplete="off" spellcheck="false">
+							<button type="button" class="tbtf-filter-clear" data-role="filter-clear"
+								aria-label="<?php esc_attr_e( 'Clear search', 'tbt-fill' ); ?>" hidden>&times;</button>
+						</div>
+						<span class="tbtf-library-line" aria-hidden="true"></span>
+						<label class="tbtf-sr" for="tbtf-filter-class"><?php esc_html_e( 'Class', 'tbt-fill' ); ?></label>
+						<select id="tbtf-filter-class" class="tbtf-select tbtf-filter-class" data-role="filter-class">
+							<option value=""><?php esc_html_e( 'All classes', 'tbt-fill' ); ?></option>
+							<?php foreach ( $filter_options as $option ) : ?>
+								<option value="<?php echo esc_attr( $option['value'] ); ?>"
+									data-name="<?php echo esc_attr( $option['name'] ); ?>"><?php echo esc_html( $option['label'] ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<span class="tbtf-library-line tbtf-library-line--end" aria-hidden="true" data-role="filter-end"></span>
+				<?php endif; ?>
+				<a class="tbtf-btn tbtf-btn--primary tbtf-library-cta" href="<?php echo esc_url( TBTF_Urls::new_url() ); ?>"><?php esc_html_e( 'Create new set', 'tbt-fill' ); ?></a>
 			</div>
+
+			<?php if ( $has_items ) : ?>
+				<p class="tbtf-filter-summary" data-role="filter-summary" aria-live="polite" hidden>
+					<span data-role="filter-summary-text"></span>
+					<button type="button" class="tbtf-filter-link" data-role="filter-reset"><?php esc_html_e( 'Clear filters', 'tbt-fill' ); ?></button>
+				</p>
+			<?php endif; ?>
 
 			<div class="tbtf-notice tbtf-notice--error" data-role="error" hidden></div>
 
@@ -286,24 +345,25 @@ class TBTF_Teacher {
 				</div>
 			<?php endif; ?>
 
-			<?php if ( empty( $sets ) ) : ?>
-				<div class="tbtf-empty">
-					<p><?php esc_html_e( 'No sets yet. Create your first one: paste the phrases of one mind-map branch with their Polish cues.', 'tbt-fill' ); ?></p>
-				</div>
-			<?php endif; ?>
+			<?php // Always present, so deleting the last set can show it without a reload. ?>
+			<div class="tbtf-empty" data-role="library-empty"<?php echo $has_items ? ' hidden' : ''; ?>>
+				<p><?php esc_html_e( 'No sets yet. Create your first one: paste the phrases of one mind-map branch with their Polish cues.', 'tbt-fill' ); ?></p>
+			</div>
 
 			<?php
-			if ( $drafts ) {
-				$this->render_group( __( 'Drafts', 'tbt-fill' ), $drafts );
-			}
-			foreach ( $groups as $class_id => $list ) {
-				$title = TBTF_Classes::class_title( $class_id );
-				$this->render_group( '' !== $title ? $title : __( 'Class', 'tbt-fill' ), $list );
-			}
-			if ( $loose ) {
-				$this->render_group( $groups ? __( 'No class', 'tbt-fill' ) : __( 'Published', 'tbt-fill' ), $loose );
+			foreach ( $groups as $group ) {
+				$this->render_group( $group, $texts );
 			}
 			?>
+
+			<?php if ( $has_items ) : ?>
+				<div class="tbtf-empty" data-role="filter-empty" hidden>
+					<p>
+						<?php esc_html_e( 'No sets match your search.', 'tbt-fill' ); ?>
+						<button type="button" class="tbtf-filter-link" data-role="filter-reset"><?php esc_html_e( 'Clear filters', 'tbt-fill' ); ?></button>
+					</p>
+				</div>
+			<?php endif; ?>
 		</div>
 
 		<div class="tbtf-modal" data-role="qr-modal" hidden>
@@ -317,18 +377,132 @@ class TBTF_Teacher {
 	}
 
 	/**
+	 * Drafts, then each class in the order the sets bring it up, then sets
+	 * with no class — titled "Published" when there are no class groups.
+	 * Class groups need TBT Notes; without it every published set is loose.
+	 *
+	 * Each group carries the two values the library filter addresses it by:
+	 * 'key' (dropdown value, URL value, data-filter-group) and 'search_name'.
+	 * Only a real class with a resolved title is searchable — "Drafts",
+	 * "No class", "Published" and the 'Class' fallback are the plugin's own
+	 * words, so typing "class" must not match every unattached set.
+	 *
+	 * @param object[] $sets Sets with item_count.
+	 * @return array[] Each array( 'key', 'title', 'search_name', 'sets' ).
+	 */
+	private function group_sets( array $sets ) {
+		$drafts  = array();
+		$classes = array();
+		$loose   = array();
+
+		foreach ( $sets as $set ) {
+			if ( TBTF_DB::STATUS_DRAFT === $set->status ) {
+				$drafts[] = $set;
+			} elseif ( $set->class_id && TBTF_Classes::available() ) {
+				$class_id = (int) $set->class_id;
+				if ( ! isset( $classes[ $class_id ] ) ) {
+					$title                = TBTF_Classes::class_title( $class_id );
+					$classes[ $class_id ] = array(
+						'key'         => 'c' . $class_id,
+						'title'       => '' !== $title ? $title : __( 'Class', 'tbt-fill' ),
+						'search_name' => $title,
+						'sets'        => array(),
+					);
+				}
+				$classes[ $class_id ]['sets'][] = $set;
+			} else {
+				$loose[] = $set;
+			}
+		}
+
+		$groups = array();
+		if ( $drafts ) {
+			$groups[] = array(
+				'key'         => 'drafts',
+				'title'       => __( 'Drafts', 'tbt-fill' ),
+				'search_name' => '',
+				'sets'        => $drafts,
+			);
+		}
+		foreach ( $classes as $group ) {
+			$groups[] = $group;
+		}
+		if ( $loose ) {
+			$groups[] = array(
+				'key'         => 'none',
+				'title'       => $classes ? __( 'No class', 'tbt-fill' ) : __( 'Published', 'tbt-fill' ),
+				'search_name' => '',
+				'sets'        => $loose,
+			);
+		}
+		return $groups;
+	}
+
+	/**
+	 * Options for the class dropdown: classes A–Z (accent-stripped, so
+	 * "Łukasz" sorts under L), then Drafts, then No class / Published.
+	 *
+	 * @param array[] $groups Groups from group_sets().
+	 * @return array[] Each array( 'value', 'label', 'name', 'count' ).
+	 */
+	private function filter_options( array $groups ) {
+		$classes = array();
+		$drafts  = null;
+		$none    = null;
+
+		foreach ( $groups as $group ) {
+			$count  = count( $group['sets'] );
+			$option = array(
+				'value' => $group['key'],
+				'label' => sprintf(
+					/* translators: 1: class or group name, 2: number of sets */
+					__( '%1$s (%2$d)', 'tbt-fill' ),
+					$group['title'],
+					$count
+				),
+				// The bare name, so JS can rebuild the label after a delete.
+				'name'  => $group['title'],
+				'count' => $count,
+			);
+
+			if ( 'drafts' === $group['key'] ) {
+				$drafts = $option;
+			} elseif ( 'none' === $group['key'] ) {
+				$none = $option;
+			} else {
+				$classes[] = $option;
+			}
+		}
+
+		usort(
+			$classes,
+			function ( $a, $b ) {
+				return strnatcasecmp( remove_accents( $a['name'] ), remove_accents( $b['name'] ) );
+			}
+		);
+
+		if ( $drafts ) {
+			$classes[] = $drafts;
+		}
+		if ( $none ) {
+			$classes[] = $none;
+		}
+		return $classes;
+	}
+
+	/**
 	 * One group of set rows.
 	 *
-	 * @param string   $name Group heading.
-	 * @param object[] $sets Rows.
+	 * @param array $group Group from group_sets().
+	 * @param array $texts Phrase pairs by set ID, for the content search.
 	 */
-	private function render_group( $name, array $sets ) {
-		$count = count( $sets );
+	private function render_group( array $group, array $texts ) {
+		$count = count( $group['sets'] );
 		?>
-		<section class="tbtf-group">
+		<section class="tbtf-group" data-role="group" data-filter-group="<?php echo esc_attr( $group['key'] ); ?>"<?php echo '' !== $group['search_name'] ? ' data-filter-name="' . esc_attr( $group['search_name'] ) . '"' : ''; ?>>
 			<div class="tbtf-group-head">
-				<h3 class="tbtf-group-name"><?php echo esc_html( $name ); ?></h3>
-				<span class="tbtf-group-count">
+				<h3 class="tbtf-group-name" data-role="group-name"><?php echo esc_html( $group['title'] ); ?></h3>
+				<span class="tbtf-group-count" data-role="group-count">
 					<?php
 					/* translators: %d: number of sets */
 					echo esc_html( sprintf( _n( '%d set', '%d sets', $count, 'tbt-fill' ), $count ) );
@@ -336,8 +510,8 @@ class TBTF_Teacher {
 				</span>
 				<span class="tbtf-group-rule" aria-hidden="true"></span>
 			</div>
-			<?php foreach ( $sets as $set ) : ?>
-				<?php $this->render_row( $set ); ?>
+			<?php foreach ( $group['sets'] as $set ) : ?>
+				<?php $this->render_row( $set, isset( $texts[ (int) $set->id ] ) ? $texts[ (int) $set->id ] : array() ); ?>
 			<?php endforeach; ?>
 		</section>
 		<?php
@@ -350,29 +524,48 @@ class TBTF_Teacher {
 	 * link gets "not available", so Copy link and QR would fail silently.
 	 * Delete asks for confirmation inside the row, not in a browser dialog.
 	 *
-	 * @param object $set Row with item_count.
+	 * The data-search-* attributes are what the library filter matches and
+	 * marks: the element text may already hold a <mark>, so the source text
+	 * travels separately. data-search-items is the [ english, polish ] text
+	 * of every phrase; distractors are not searched.
+	 *
+	 * @param object $set   Row with item_count.
+	 * @param array  $pairs Phrase pairs, each array( english, polish ).
 	 */
-	private function render_row( $set ) {
+	private function render_row( $set, array $pairs = array() ) {
 		$is_draft = TBTF_DB::STATUS_DRAFT === $set->status;
 		$url      = TBTF_Urls::set_url( $set->slug );
 		$class    = $set->class_id ? TBTF_Classes::class_title( (int) $set->class_id ) : '';
 		$lesson   = $set->lesson_id ? TBTF_Classes::lesson_title( (int) $set->lesson_id ) : '';
+		$chip     = '' !== $class ? ( '' !== $lesson ? $class . ' · ' . $lesson : $class ) : '';
+		$label    = (string) $set->label;
 		$count    = (int) $set->item_count;
+		// Hex-escaped so the attribute holds no quotes or ampersands for
+		// esc_attr() to reinterpret; JSON.parse() restores them.
+		$items_json = wp_json_encode( array_values( $pairs ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
 		?>
-		<article class="tbtf-set<?php echo $is_draft ? ' tbtf-set--draft' : ''; ?>" data-id="<?php echo (int) $set->id; ?>">
+		<article class="tbtf-set<?php echo $is_draft ? ' tbtf-set--draft' : ''; ?>" data-id="<?php echo (int) $set->id; ?>"
+			data-search-title="<?php echo esc_attr( $set->title ); ?>"
+			<?php if ( '' !== $label ) : ?>
+				data-search-label="<?php echo esc_attr( $label ); ?>"
+			<?php endif; ?>
+			<?php if ( '' !== $chip ) : ?>
+				data-search-chip="<?php echo esc_attr( $chip ); ?>"
+			<?php endif; ?>
+			data-search-items="<?php echo esc_attr( $items_json ? $items_json : '[]' ); ?>">
 			<div class="tbtf-set-body">
-				<?php if ( '' !== (string) $set->label ) : ?>
-					<p class="tbtf-set-label"><?php echo esc_html( $set->label ); ?></p>
+				<?php if ( '' !== $label ) : ?>
+					<p class="tbtf-set-label" data-role="item-label"><?php echo esc_html( $label ); ?></p>
 				<?php endif; ?>
-				<h4 class="tbtf-set-title"><?php echo esc_html( $set->title ); ?></h4>
+				<h4 class="tbtf-set-title" data-role="item-title"><?php echo esc_html( $set->title ); ?></h4>
 				<div class="tbtf-set-meta">
 					<?php if ( $is_draft ) : ?>
 						<span class="tbtf-chip tbtf-chip--draft"><?php esc_html_e( 'Draft', 'tbt-fill' ); ?></span>
 					<?php else : ?>
 						<span class="tbtf-chip tbtf-chip--live"><?php esc_html_e( 'Published', 'tbt-fill' ); ?></span>
 					<?php endif; ?>
-					<?php if ( '' !== $class ) : ?>
-						<span class="tbtf-chip"><?php echo esc_html( '' !== $lesson ? $class . ' · ' . $lesson : $class ); ?></span>
+					<?php if ( '' !== $chip ) : ?>
+						<span class="tbtf-chip" data-role="item-chip"><?php echo esc_html( $chip ); ?></span>
 					<?php endif; ?>
 					<span>
 						<?php
@@ -383,6 +576,7 @@ class TBTF_Teacher {
 					<span aria-hidden="true">·</span>
 					<span><?php echo esc_html( mysql2date( get_option( 'date_format' ), $set->updated_at ) ); ?></span>
 				</div>
+				<p class="tbtf-hit-line" data-role="item-hit" hidden></p>
 			</div>
 			<div class="tbtf-set-actions" data-role="actions">
 				<?php if ( '' !== $url ) : ?>
