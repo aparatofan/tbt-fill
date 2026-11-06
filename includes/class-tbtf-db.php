@@ -154,6 +154,31 @@ class TBTF_DB {
 	}
 
 	/**
+	 * The English and Polish of every phrase in every set a user owns, for
+	 * the library search. One query for the whole library, never one per
+	 * row. Distractors are left out on purpose: they are words the phrase
+	 * does not contain.
+	 *
+	 * @param int $user_id Owner.
+	 * @return object[] Each with parent_id, english, polish, in set and position order.
+	 */
+	public static function item_texts_for_owner( $user_id ) {
+		global $wpdb;
+		$sets  = self::sets_table();
+		$items = self::items_table();
+		return (array) $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT i.set_id AS parent_id, i.english, i.polish
+				FROM {$items} i
+				INNER JOIN {$sets} s ON s.id = i.set_id
+				WHERE s.owner_id = %d
+				ORDER BY i.set_id ASC, i.position ASC, i.id ASC",
+				(int) $user_id
+			)
+		);
+	}
+
+	/**
 	 * Every set a user owns, newest change first, with its phrase count.
 	 *
 	 * @param int $user_id Owner.
