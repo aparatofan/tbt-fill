@@ -35,6 +35,52 @@
 	var NEXT_AFTER_CORRECT = 1700;
 	var NEXT_AFTER_MISS = 2400;
 
+	/* Reporting to TBT Notes, as in Translation Drill. The endpoint and nonce
+	   are localised only when Notes is active and the viewer is logged in;
+	   the per-set `activity` block is printed only for a student on a
+	   published set. Missing either one, nothing is sent. */
+	var PRESENCE_EVERY = 20000;
+	var presenceTimer = null;
+	var activity = null;
+
+	function postActivity( path, body ) {
+		if ( ! cfg.activityBase || ! cfg.activityNonce || ! activity || ! window.fetch ) {
+			return;
+		}
+		// A side effect of playing, never a gate on it: failures are swallowed.
+		try {
+			window.fetch( cfg.activityBase + path, {
+				method: 'POST',
+				credentials: 'same-origin',
+				cache: 'no-store',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-WP-Nonce': cfg.activityNonce
+				},
+				body: JSON.stringify( body || {} ),
+				// A student who closes the tab right after finishing is still recorded.
+				keepalive: true
+			} ).catch( function () {} );
+		} catch ( e ) {}
+	}
+
+	function startPresence() {
+		if ( presenceTimer || ! cfg.activityBase || ! activity ) {
+			return;
+		}
+		postActivity( '/presence', {} );
+		presenceTimer = window.setInterval( function () {
+			postActivity( '/presence', {} );
+		}, PRESENCE_EVERY );
+	}
+
+	function stopPresence() {
+		if ( presenceTimer ) {
+			window.clearInterval( presenceTimer );
+			presenceTimer = null;
+		}
+	}
+
 	/* Chase geometry. */
 	var HERO_W = 30;
 	var LEAD_W = 42;
@@ -533,6 +579,8 @@
 			return;
 		}
 
+		activity = SET.activity || null;
+
 		ensureViewportFit();
 		// The app is a full-screen layer; the page behind it must not scroll.
 		document.documentElement.classList.add( 'tbtf-lock' );
@@ -761,8 +809,12 @@
 				pos: 0,
 				score: 0,
 				retried: {},
-				result: {}
+				result: {},
+				// Per game, so each Play again reports its own result once.
+				startedAt: Date.now(),
+				reported: false
 			};
+			startPresence();
 			show( 'game' );
 			el.score.textContent = '0';
 			nextItem();
@@ -1095,8 +1147,26 @@
 			}, NEXT_AFTER_MISS );
 		}
 
+		function reportCompletion() {
+			if ( G.reported || ! activity ) {
+				return;
+			}
+			G.reported = true;
+			// Game points, not "right first time": speed is evidence too. They
+			// have no maximum, so no score_max. A 0 is a real result and is sent.
+			postActivity( '', {
+				tool: 'fill',
+				object_ref: activity.objectRef,
+				object_title: activity.objectTitle,
+				score: G.score,
+				duration_seconds: Math.max( 0, Math.round( ( Date.now() - G.startedAt ) / 1000 ) )
+			} );
+		}
+
 		function finish() {
 			cur = null;
+			stopPresence();
+			reportCompletion();
 			show( 'end' );
 			q( 'final' ).textContent = G.score;
 			var ids = SET.items.map( function ( _, i ) { return i; } );
@@ -1153,6 +1223,7 @@
 			}
 		}
 		function quit() {
+			stopPresence();
 			el.overlay.hidden = true;
 			cancelAnimationFrame( raf );
 			clearLater();
@@ -1169,7 +1240,17 @@
 				pause();
 			}
 		} );
-		window.addEventListener( 'pagehide', pause );
+		window.addEventListener( 'pagehide', function () {
+			pause();
+			stopPresence();
+		} );
+		// Back from the back/forward cache onto a game still in progress
+		// (paused): the student is still working, so the heartbeat resumes.
+		window.addEventListener( 'pageshow', function () {
+			if ( screenNow === 'game' && G && ! G.reported ) {
+				startPresence();
+			}
+		} );
 
 		/* ---------- Freshness: reload when the set was saved since ---------- */
 
@@ -1304,7 +1385,10 @@
 			Sfx.unlock();
 			startWhenFresh( false );
 		} );
-		q( 'settings' ).addEventListener( 'click', function () { show( 'start' ); } );
+		q( 'settings' ).addEventListener( 'click', function () {
+			stopPresence();
+			show( 'start' );
+		} );
 
 		var resizeTimer = 0;
 		window.addEventListener( 'resize', function () {
