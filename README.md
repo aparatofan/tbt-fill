@@ -67,6 +67,7 @@ php tests/test-phrase.php
 
 ## Changelog
 
+- **1.8.0**: Finished games are reported to TBT Notes' activity log with their game points, so they appear in TBT Results and in the class progress panel.
 - **1.6.0**: Relaxed pace +4 s per phrase (12 + 2.5 per word). Student page checks whether its set has been saved since it loaded and reloads to the new version when the student returns to it or presses START.
 - **1.5.0**: Answer slots replaced by a wrapping answer line; phrases up to 12 words; phrases over 6 words get no extra words.
 

@@ -109,7 +109,18 @@ class TBTF_Player {
 	 * @return array
 	 */
 	public static function script_data() {
-		return array(
+		// Finished games and presence go to TBT Notes' activity log when Notes
+		// is active, as in Translation Drill. Without these keys the player
+		// reports nothing.
+		$activity = array();
+		if ( is_user_logged_in() && class_exists( 'TBT_Notes_Activity_REST' ) && defined( 'TBT_NOTES_REST_NAMESPACE' ) ) {
+			$activity = array(
+				'activityBase'  => esc_url_raw( rest_url( TBT_NOTES_REST_NAMESPACE . '/activity' ) ),
+				'activityNonce' => wp_create_nonce( 'wp_rest' ),
+			);
+		}
+
+		return $activity + array(
 			// player.js appends {slug}/stamp; see TBTF_Rest::stamp().
 			'stampUrl' => esc_url_raw( rest_url( TBTF_Rest::NS . '/sets/' ) ),
 			'i18n'     => array(
@@ -224,6 +235,17 @@ class TBTF_Player {
 		}
 
 		$is_draft = TBTF_DB::STATUS_DRAFT === $set->status;
+
+		// Only a logged-in student on a published set reports. The owner (or
+		// an admin) screen-sharing a game must not show up in TBT Results or
+		// Class Progress. The slug is what the student's URL carries and
+		// never changes after the set is created.
+		if ( TBTF_DB::STATUS_PUBLISHED === $set->status && ! $is_owner && is_user_logged_in() ) {
+			$data['activity'] = array(
+				'objectRef'   => (string) $set->slug,
+				'objectTitle' => (string) $set->title,
+			);
+		}
 
 		$banner = '';
 		if ( $is_draft ) {
